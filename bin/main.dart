@@ -1,3 +1,5 @@
+// @dart=2.8
+
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -6,12 +8,13 @@ import 'package:screenshots3/src/daemon_client.dart';
 import 'package:screenshots3/src/globals.dart';
 import 'package:screenshots3/src/screens.dart';
 
+
 const usage =
     'usage: screenshots [-h] [-c <config file>] [-m <normal|recording|comparison|archive>] [-f <flavor>] [-b <true|false>] [-v]';
 const sampleUsage = 'sample usage: screenshots';
 
 void main(List<String> arguments) async {
-  late ArgResults argResults;
+  ArgResults argResults;
 
   final configArg = 'config';
   final modeArg = 'mode';
