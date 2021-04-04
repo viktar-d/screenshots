@@ -15,7 +15,7 @@ dependencies:
   file: ^6.1.0
   archive: ^3.1.2
   platform: ^3.0.0
-  process: ^4.2.1
+  process: ^4.0.0
   meta: ^1.1.6
   intl: ^0.17.0
 
