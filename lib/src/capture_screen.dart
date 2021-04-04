@@ -2,10 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'globals.dart';
-import 'package:flutter_driver/flutter_driver.dart';
 
 
-Future<void> screenshot(final FlutterDriver driver, String name,
+Future<void> screenshot(final dynamic driver, String name,
     {Duration timeout = const Duration(seconds: 30),
     bool silent = false,
     bool waitUntilNoTransientCallbacks = true
@@ -15,7 +14,7 @@ Future<void> screenshot(final FlutterDriver driver, String name,
       await driver.waitUntilNoTransientCallbacks(timeout: timeout);
     }
 
-    final pixels = await driver.screenshot();
+    final pixels = await driver.screenshot() as List<int>;
     final testDir = '$kTempDir/$kTestScreenshotsDir';
     final file =
         await File('$testDir/$name.$kImageExtension').create(recursive: true);
