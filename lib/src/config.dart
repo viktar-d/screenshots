@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:collection/collection.dart';
-import 'package:meta/meta.dart';
 import 'package:screenshots/src/daemon_client.dart';
 import 'package:screenshots/src/orientation.dart';
 import 'package:screenshots/src/utils.dart';

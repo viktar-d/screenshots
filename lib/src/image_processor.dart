@@ -1,28 +1,24 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:screenshots/src/config.dart';
 import 'package:screenshots/src/image_magick.dart';
 import 'package:screenshots/src/orientation.dart';
 
 import 'archive.dart';
-import 'fastlane.dart' as fastlane;
 import 'globals.dart';
 import 'screens.dart';
 import 'utils.dart' as utils;
 
 class ImageProcessor {
   static const _kDefaultIosBackground = 'xc:white';
-  @visibleForTesting // for now
   static const kDefaultAndroidBackground = 'xc:none'; // transparent
   static const _kCrop = '1000x40+0+0'; // default sample size and location to test for brightness
 
   final ScreenManager _screens;
-  final Config _config;
 
-  ImageProcessor(this._screens, this._config);
+  ImageProcessor(this._screens);
 
   /// Process screenshots.
   ///
@@ -114,7 +110,6 @@ class ImageProcessor {
     return true; // for testing
   }
 
-  @visibleForTesting
   static void showFailedCompare(Map failedCompare) {
     //printError('Comparison failed:');
 
@@ -124,7 +119,6 @@ class ImageProcessor {
     });
   }
 
-  @visibleForTesting
   static Future<Map> compareImages(
       String deviceName, String recordingDir, String comparisonDir) async {
     Map failedCompare = {};

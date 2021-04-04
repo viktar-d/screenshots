@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:resource_portable/resource.dart';
 import 'package:screenshots/src/utils.dart';
 import 'package:yaml/yaml.dart';
-import 'package:collection/src/iterable_extensions.dart';
 
 import 'globals.dart';
 
@@ -188,7 +187,11 @@ class ScreenManager {
   }
 
   DeviceScreen? getScreen(final String deviceName) {
-    return screens.values.firstWhereOrNull((e) => e.devices.contains(deviceName));
+    try {
+      return screens.values.firstWhere((e) => e.devices.contains(deviceName));
+    } on StateError {
+      return null;
+    }
   }
 
   List<String> getDeviceNamesForOs(DeviceType type) {

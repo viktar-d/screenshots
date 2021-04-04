@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:meta/meta.dart';
 import 'package:screenshots/screenshots.dart';
 import 'package:screenshots/src/globals.dart';
 import 'package:screenshots/src/utils.dart';
@@ -59,7 +58,6 @@ class DaemonClient {
     }
   }
 
-  @visibleForTesting
   Future enableDeviceDiscovery() async {
     await _sendCommandWaitResponse('device.enable');
   }

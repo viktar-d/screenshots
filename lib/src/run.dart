@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 
 
@@ -16,6 +15,24 @@ import 'resources.dart' as resources;
 import 'screens.dart';
 import 'utils.dart' as utils;
 import 'validate.dart' as validate;
+
+
+String canonicalizedLocale(String aLocale) {
+// Locales of length < 5 are presumably two-letter forms, or else malformed.
+// We return them unmodified and if correct they will be found.
+// Locales longer than 6 might be malformed, but also do occur. Do as
+// little as possible to them, but make the '-' be an '_' if it's there.
+// We treat C as a special case, and assume it wants en_ISO for formatting.
+// TODO(alanknight): en_ISO is probably not quite right for the C/Posix
+// locale for formatting. Consider adding C to the formats database.
+  if (aLocale == 'C') return 'en_ISO';
+  if (aLocale.length < 5) return aLocale;
+  if (aLocale[2] != '-' && (aLocale[2] != '_')) return aLocale;
+  var region = aLocale.substring(3);
+// If it's longer than three it's something odd, so don't touch it.
+  if (region.length <= 3) region = region.toUpperCase();
+  return '${aLocale[0]}${aLocale[1]}_$region';
+}
 
 /// Run screenshots
 Future<bool> screenshots({
@@ -234,7 +251,7 @@ class Screenshots {
       }
       await utils.streamCmd(command);
       // process screenshots
-      final imageProcessor = ImageProcessor(screenManager, config);
+      final imageProcessor = ImageProcessor(screenManager);
       await imageProcessor.process(device, locale, runMode, orientation, archive);
     }
   }
@@ -274,8 +291,7 @@ Future<bool> setSimulatorLocale(Device device, String locale) async {
   // a running simulator
   final deviceLocale = utils.getIosSimulatorLocale(device.deviceId);
   //printTrace('\'$deviceName\' locale: $deviceLocale, test locale: $testLocale');
-  if (Intl.canonicalizedLocale(locale) !=
-      Intl.canonicalizedLocale(deviceLocale)) {
+  if (canonicalizedLocale(locale) != canonicalizedLocale(deviceLocale)) {
     //printStatus('Changing locale from $deviceLocale to $testLocale on \'$deviceName\'...');
     await _changeSimulatorLocale(device.deviceId, locale);
     return true;
@@ -288,7 +304,7 @@ Future<bool> setSimulatorLocale(Device device, String locale) async {
 Future<void> setAndroidEmulatorLocale(Device device, String locale) async {
   final deviceLocale = utils.getAndroidDeviceLocale(device.deviceId);
   //printTrace('\'$deviceName\' locale: $deviceLocale, test locale: $testLocale');
-  if (Intl.canonicalizedLocale(deviceLocale) != Intl.canonicalizedLocale(locale)) {
+  if (canonicalizedLocale(deviceLocale) != canonicalizedLocale(locale)) {
     //          daemonClient.verbose = true;
     //printStatus('Changing locale from $deviceLocale to $testLocale on \'$deviceName\'...');
     changeAndroidLocale(device.deviceId, deviceLocale, locale);

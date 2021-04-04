@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:meta/meta.dart';
-
 import 'config.dart';
 import 'screens.dart';
 import 'utils.dart' as utils;
@@ -94,7 +92,6 @@ bool isValidTestPaths(String driverArgs) {
 }
 
 /// Checks if a simulator is installed, matching the device named in config file.
-@visibleForTesting
 bool isSimulatorInstalled(Map simulators, String deviceName) {
   // check simulator installed
   bool isSimulatorInstalled = false;

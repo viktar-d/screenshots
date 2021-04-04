@@ -2,19 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'package:file/file.dart';
-import 'package:file/local.dart';
-import 'package:path/path.dart' show Context;
-import 'package:platform/platform.dart';
-
-const Map<String, String> _osToPathStyle = <String, String>{
-  'linux': 'posix',
-  'macos': 'posix',
-  'android': 'posix',
-  'ios': 'posix',
-  'fuchsia': 'posix',
-  'windows': 'windows',
-};
+import 'package:path/path.dart' show Context, Style;
+import 'dart:io';
 
 ///// Sanatizes the executable path on Windows.
 ///// https://github.com/dart-lang/sdk/issues/37751
@@ -50,23 +39,19 @@ const Map<String, String> _osToPathStyle = <String, String>{
 /// If [platform] is not specified, it will default to the current platform.
 String? getExecutablePath(
   String command,
-  String? workingDirectoryParam, {
-  Platform platform = const LocalPlatform(),
-  FileSystem fs = const LocalFileSystem(),
-}) {
-  assert(_osToPathStyle[platform.operatingSystem] == fs.path.style.name);
+  String? workingDirectoryParam
+) {
+  final style = Platform.isWindows ? Style.windows : Style.posix;
 
-  var workingDirectory = workingDirectoryParam ?? fs.currentDirectory.path;
-  var context = Context(style: fs.path.style, current: workingDirectory);
+  final workingDirectory = workingDirectoryParam ?? Directory.current.path;
+  final context = Context(style: style, current: workingDirectory);
 
-  // TODO(goderbauer): refactor when github.com/google/platform.dart/issues/2
-  //     is available.
-  var pathSeparator = platform.isWindows ? ';' : ':';
+  final pathSeparator = Platform.isWindows ? ';' : ':';
 
-  var extensions = <String>[];
-  if (platform.isWindows && context.extension(command).isEmpty) {
-    if (platform.environment.containsKey('PATHEXT')) {
-      extensions = platform.environment['PATHEXT']!.split(pathSeparator);
+  final extensions = <String>[];
+  if (Platform.isWindows && context.extension(command).isEmpty) {
+    if (Platform.environment.containsKey('PATHEXT')) {
+      extensions.addAll(Platform.environment['PATHEXT']!.split(pathSeparator));
     }
   }
 
@@ -75,12 +60,12 @@ String? getExecutablePath(
     candidates = _getCandidatePaths(
         command, <String>[workingDirectory], extensions, context);
   } else {
-    var searchPath = platform.environment['PATH']!.split(pathSeparator);
+    var searchPath = Platform.environment['PATH']!.split(pathSeparator);
     candidates = _getCandidatePaths(command, searchPath, extensions, context);
   }
 
   try {
-    return candidates.firstWhere((String path) => fs.file(path).existsSync());
+    return candidates.firstWhere((String path) => File(path).existsSync());
   } on StateError {
     return null;
   }
