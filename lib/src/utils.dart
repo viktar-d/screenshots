@@ -1,42 +1,46 @@
 import 'dart:async';
-import 'dart:convert' as cnv;
 import 'dart:convert';
+import 'dart:io';
 
-import 'package:path/path.dart' as p;
-import 'package:process/process.dart';
-import 'package:screenshots/src/daemon_client.dart';
-import 'package:tool_base/tool_base.dart';
-import 'package:tool_mobile/tool_mobile.dart';
-import 'package:yaml/yaml.dart';
+import 'package:path/path.dart';
+import 'package:screenshots/src/config.dart';
+import 'package:screenshots/src/utils/process.dart';
 
-import 'context_runner.dart';
 import 'globals.dart';
 
-/// Parse a yaml file.
-Map parseYamlFile(String yamlPath) =>
-    jsonDecode(jsonEncode(loadYaml(fs.file(yamlPath).readAsStringSync())));
+class Tuple<A, B> {
+  final A first;
+  final B second;
 
-/// Parse a yaml string.
-Map parseYamlStr(String yamlString) =>
-    jsonDecode(jsonEncode(loadYaml(yamlString)));
+  const Tuple(this.first, this.second);
+}
+
+class Tuple3<A, B, C> {
+  final A first;
+  final B second;
+  final C third;
+
+  Tuple3(this.first, this.second, this.third);
+}
 
 /// Move files from [srcDir] to [dstDir].
 /// If dstDir does not exist, it is created.
 void moveFiles(String srcDir, String dstDir) {
-  if (!fs.directory(dstDir).existsSync()) {
-    fs.directory(dstDir).createSync(recursive: true);
+  if (!Directory(dstDir).existsSync()) {
+    Directory(dstDir).createSync(recursive: true);
   }
-  fs.directory(srcDir).listSync().forEach((file) {
-    file.renameSync('$dstDir/${p.basename(file.path)}');
+  Directory(srcDir).listSync().forEach((file) {
+    file.renameSync('$dstDir/${basename(file.path)}');
   });
 }
+
 
 /// Creates a list of available iOS simulators.
 /// (really just concerned with simulators for now).
 /// Provides access to their IDs and status'.
 Map getIosSimulators() {
   final simulators = cmd(['xcrun', 'simctl', 'list', 'devices', '--json']);
-  final simulatorsInfo = cnv.jsonDecode(simulators)['devices'];
+  final simulatorsInfo = jsonDecode(simulators)['devices'];
   return transformIosSimulators(simulatorsInfo);
 }
 
@@ -82,7 +86,6 @@ Map transformIosSimulators(Map simsInfo) {
 // finds the iOS simulator with the highest available iOS version
 Map getHighestIosSimulator(Map iosSims, String simName) {
   final Map iOSVersions = iosSims[simName];
-  if (iOSVersions == null) return null; // todo: hack for real device
 
   // get highest iOS version
   var iOSVersionName = getHighestIosVersion(iOSVersions);
@@ -128,30 +131,29 @@ String getHighestIosVersion(Map iOSVersions) {
 
 /// Adds prefix to all files in a directory
 Future prefixFilesInDir(String dirPath, String prefix) async {
-  await for (final file
-      in fs.directory(dirPath).list(recursive: false, followLinks: false)) {
-    await file
-        .rename(p.dirname(file.path) + '/' + prefix + p.basename(file.path));
-  }
+    await for (final file in Directory(dirPath).list(recursive: false, followLinks: false)) {
+      final path = file.path;
+      await file.rename('${dirname(path)}/$prefix${basename(path)}');
+    }
 }
 
 /// Converts [_enum] value to [String].
 String getStringFromEnum(dynamic _enum) => _enum.toString().split('.').last;
 
-/// Converts [String] to [enum].
-T getEnumFromString<T>(List<T> values, String value, {bool allowNull = false}) {
-  return values.firstWhere((type) => getStringFromEnum(type) == value,
-      orElse: () => allowNull
-          ? null
-          : throw 'Fatal: \'$value\' is not a valid enum value for $values.');
+String getDeviceLocale(Device device) {
+  if (device.deviceType == DeviceType.android) {
+    return getAndroidDeviceLocale(device.deviceId);
+  } else {
+    return getIosSimulatorLocale(device.deviceId);
+  }
 }
 
 /// Returns locale of currently attached android device.
 String getAndroidDeviceLocale(String deviceId) {
 // ro.product.locale is available on first boot but does not update,
 // persist.sys.locale is empty on first boot but updates with locale changes
-  String locale = cmd([
-    getAdbPath(androidSdk),
+  var locale = cmd([
+    'adb', //getAdbPath(androidSdk),
     '-s',
     deviceId,
     'shell',
@@ -160,7 +162,7 @@ String getAndroidDeviceLocale(String deviceId) {
   ]).trim();
   if (locale.isEmpty) {
     locale = cmd([
-      getAdbPath(androidSdk),
+      'adb', //getAdbPath(androidSdk),
       '-s',
       deviceId,
       'shell',
@@ -172,12 +174,12 @@ String getAndroidDeviceLocale(String deviceId) {
 
 /// Returns locale of simulator with udid [udId].
 String getIosSimulatorLocale(String udId) {
-  final env = platform.environment;
+  final env = Platform.environment;
   final globalPreferencesPath =
       '${env['HOME']}/Library/Developer/CoreSimulator/Devices/$udId/data/Library/Preferences/.GlobalPreferences.plist';
 
   // create file if missing (iOS 13)
-  final globalPreferences = fs.file(globalPreferencesPath);
+  final globalPreferences = File(globalPreferencesPath);
   if (!globalPreferences.existsSync()) {
     final contents = '''
 <?xml version="1.0" encoding="UTF-8"?>
@@ -241,7 +243,7 @@ String getIosSimulatorLocale(String udId) {
     globalPreferences.writeAsStringSync(contents);
     cmd(['plutil', '-convert', 'binary1', globalPreferences.path]);
   }
-  final localeInfo = cnv.jsonDecode(
+  final localeInfo = jsonDecode(
       cmd(['plutil', '-convert', 'json', '-o', '-', globalPreferencesPath]));
   final locale = localeInfo['AppleLocale'];
   return locale;
@@ -300,46 +302,19 @@ Future<String> waitAndroidLocaleChange(String deviceId, String toLocale) async {
   return line;
 }
 
-/// Filters a list of devices to get real ios devices. (only used in test??)
-List<DaemonDevice> getIosDaemonDevices(List<DaemonDevice> devices) {
-  final iosDevices = devices
-      .where((device) => device.platform == 'ios' && !device.emulator)
-      .toList();
-  return iosDevices;
-}
-
-/// Filters a list of devices to get real android devices.
-List<DaemonDevice> getAndroidDevices(List<DaemonDevice> devices) {
-  final iosDevices = devices
-      .where((device) => device.platform != 'ios' && !device.emulator)
-      .toList();
-  return iosDevices;
-}
-
-/// Get device for deviceName from list of devices.
-DaemonDevice getDevice(List<DaemonDevice> devices, String deviceName) {
-  return devices.firstWhere(
-      (device) => device.iosModel == null
-          ? device.name == deviceName
-          : device.iosModel.contains(deviceName),
-      orElse: () => null);
-}
-
-/// Get device for deviceId from list of devices.
-DaemonDevice getDeviceFromId(List<DaemonDevice> devices, String deviceId) {
-  return devices.firstWhere((device) => device.id == deviceId,
-      orElse: () => null);
-}
 
 /// Wait for message to appear in sys log and return first matching line
 Future<String> waitSysLogMsg(
     String deviceId, RegExp regExp, String locale) async {
-  cmd([getAdbPath(androidSdk), '-s', deviceId, 'logcat', '-c']);
+  cmd([
+    //getAdbPath(androidSdk),
+    'adb',
+    '-s', deviceId, 'logcat', '-c']);
 //  await Future.delayed(Duration(milliseconds: 1000)); // wait for log to clear
   await Future.delayed(Duration(milliseconds: 500)); // wait for log to clear
   // -b main ContactsDatabaseHelper:I '*:S'
-  final delegate = await runCommand([
-    getAdbPath(androidSdk),
+  final delegate = await processManager.start([
+    'adb', //getAdbPath(androidSdk),
     '-s',
     deviceId,
     'logcat',
@@ -351,79 +326,25 @@ Future<String> waitSysLogMsg(
     '-e',
     locale
   ]);
-  final process = ProcessWrapper(delegate);
-  return await process.stdout
-//      .transform<String>(cnv.Utf8Decoder(reportErrors: false)) // from flutter tools
-      .transform<String>(cnv.Utf8Decoder(allowMalformed: true))
-      .transform<String>(const cnv.LineSplitter())
-      .firstWhere((line) {
-    printTrace(line);
-    return regExp.hasMatch(line);
-  }, orElse: () => null);
+
+  return await delegate.stdout
+    .transform(Utf8Decoder(allowMalformed: true))
+    .transform(const LineSplitter())
+    .firstWhere((line) => regExp.hasMatch(line));
 }
 
-/// Find the emulator info of an named emulator available to boot.
-DaemonEmulator findEmulator(
-    List<DaemonEmulator> emulators, String emulatorName) {
-  // find highest by avd version number
-  emulators.sort(emulatorComparison);
-  // todo: fix find for example 'Nexus_6_API_28' and Nexus_6P_API_28'
-  return emulators.lastWhere(
-      (emulator) => emulator.id
-          .toUpperCase()
-          .contains(emulatorName.toUpperCase().replaceAll(' ', '_')),
-      orElse: () => null);
-}
-
-int emulatorComparison(DaemonEmulator a, DaemonEmulator b) =>
-    a.id.compareTo(b.id);
-
-/// Get [RunMode] from [String].
-RunMode getRunModeEnum(String runMode) {
-  return getEnumFromString<RunMode>(RunMode.values, runMode);
-}
-
-/// Test for recordings in [recordDir].
-Future<bool> isRecorded(String recordDir) async =>
-    !(await fs.directory(recordDir).list().isEmpty);
-
-/// Convert a posix path to platform path (windows/posix).
-String toPlatformPath(String posixPath, {p.Context context}) {
-  const posixPathSeparator = '/';
-  final splitPath = posixPath.split(posixPathSeparator);
-  if (context != null) {
-    // for testing
-    return context.joinAll(splitPath);
-  }
-  return p.joinAll(splitPath);
-}
-
-/// Path to the `adb` executable.
-Future<bool> isAdbPath() async {
-  return await runInContext<bool>(() async {
-    final adbPath = getAdbPath(androidSdk);
-    return adbPath != null && adbPath.isNotEmpty;
-  });
-}
-
-/// Path to the `emulator` executable.
-Future<bool> isEmulatorPath() async {
-  return await runInContext<bool>(() async {
-    final emulatorPath = getEmulatorPath(androidSdk);
-    return emulatorPath != null && emulatorPath.isNotEmpty;
-  });
-}
 
 /// Run command and return stdout as [string].
-String cmd(List<String> cmd,
-    {String workingDirectory, bool silent = true}) {
-  final result = processManager.runSync(cmd,
-      workingDirectory: workingDirectory, runInShell: true);
-  _traceCommand(cmd, workingDirectory: workingDirectory);
-  if (!silent) printStatus(result.stdout);
+String cmd(List<String> cmd, {String? workingDirectory}) {
+  final result = processManager.runSync(
+    cmd,
+    workingDirectory: workingDirectory,
+    runInShell: true
+  );
+  //if (!silent) printStatus(result.stdout);
   if (result.exitCode != 0) {
-    if (silent) printError(result.stdout);
-    printError(result.stderr);
+    //if (silent) printError(result.stdout);
+    //printError(result.stderr);
     throw 'command failed: exitcode=${result.exitCode}, cmd=\'${cmd.join(" ")}\', workingDir=$workingDirectory';
   }
   // return stdout
@@ -434,42 +355,27 @@ String cmd(List<String> cmd,
 ///
 /// Allows failed exit code.
 int runCmd(List<String> cmd) {
-  _traceCommand(cmd);
   final result = processManager.runSync(cmd);
   if (result.exitCode != 0) {
-    printTrace(result.stdout);
-    printTrace(result.stderr);
+    //printTrace(result.stdout);
+    //printTrace(result.stderr);
   }
   return result.exitCode;
-}
-
-/// Trace a command.
-void _traceCommand(List<String> args, {String workingDirectory}) {
-  final String argsText = args.join(' ');
-  if (workingDirectory == null) {
-    printTrace('executing: $argsText');
-  } else {
-    printTrace('executing: [$workingDirectory${fs.path.separator}] $argsText');
-  }
 }
 
 /// Execute command with arguments [cmd] in a separate process
 /// and stream stdout/stderr.
 Future<void> streamCmd(
   List<String> cmd, {
-  String workingDirectory,
-  ProcessStartMode mode = ProcessStartMode.normal,
-  Map<String, String> environment,
+  String? workingDirectory,
+  Map<String, String> environment = const {},
 }) async {
-  if (mode == ProcessStartMode.normal) {
-    int exitCode = await runCommandAndStreamOutput(cmd,
-        workingDirectory: workingDirectory, environment: environment);
-    if (exitCode != 0) {
-      throw 'command failed: exitcode=$exitCode, cmd=\'${cmd.join(" ")}\', workingDirectory=$workingDirectory, mode=$mode';
-    }
-  } else {
-//    final process = await runDetached(cmd);
-//    exitCode = await process.exitCode;
-    unawaited(runDetached(cmd));
+  var exitCode = await runCommandAndStreamOutput(
+      cmd,
+      workingDirectory: workingDirectory,
+      environment: environment
+  );
+  if (exitCode != 0) {
+    throw 'command failed: exitcode=$exitCode, cmd=\'${cmd.join(" ")}\', workingDirectory=$workingDirectory';
   }
 }

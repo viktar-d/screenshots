@@ -2,13 +2,16 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:screenshots/screenshots.dart';
+import 'package:screenshots/src/daemon_client.dart';
+import 'package:screenshots/src/globals.dart';
+import 'package:screenshots/src/screens.dart';
 
 const usage =
     'usage: screenshots [-h] [-c <config file>] [-m <normal|recording|comparison|archive>] [-f <flavor>] [-b <true|false>] [-v]';
 const sampleUsage = 'sample usage: screenshots';
 
 void main(List<String> arguments) async {
-  ArgResults argResults;
+  late ArgResults argResults;
 
   final configArg = 'config';
   final modeArg = 'mode';
@@ -16,7 +19,7 @@ void main(List<String> arguments) async {
   final buildArg = 'build';
   final helpArg = 'help';
   final verboseArg = 'verbose';
-  final ArgParser argParser = ArgParser(allowTrailingOptions: false)
+  final argParser = ArgParser(allowTrailingOptions: false)
     ..addOption(configArg,
         abbr: 'c',
         defaultsTo: kConfigFileName,
@@ -94,7 +97,13 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  final config = Config(configPath: argResults[configArg]);
+
+  final daemonClient = await DaemonClient.getInstance();
+  final devices = await daemonClient.runningDevices;
+
+  final config = Config.loadFromFile(argResults[configArg], devices);
+
+  /*
   if (config.isRunTypeActive(DeviceType.android)) {
     // check required executables for android
     if (!await isAdbPath()) {
@@ -118,10 +127,14 @@ void main(List<String> arguments) async {
       exit(1);
     }
   }
+   */
+
+  final manager = await ScreenManager.fromResource();
 
   final success = await screenshots(
-    configPath: argResults[configArg],
-    mode: argResults[modeArg],
+    config: config,
+    screenManager: manager,
+    runMode: RunMode.normal, //argResults[modeArg],
     flavor: argResults[flavorArg],
     isBuild: argResults.wasParsed(buildArg)
         ? argResults[buildArg] == 'true' ? true : false

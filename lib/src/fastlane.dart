@@ -1,18 +1,19 @@
 import 'dart:async';
 
 import 'package:screenshots/src/image_magick.dart';
-import 'package:tool_base/tool_base.dart' hide Config;
 
 import 'config.dart';
 import 'screens.dart';
 import 'package:path/path.dart' as p;
 import 'globals.dart';
+import 'dart:io';
 
 /// clear configured fastlane directories.
 Future clearFastlaneDirs(
-    Config config, Screens screens, RunMode runMode) async {
+    Config config, ScreenManager screens, RunMode runMode) async {
+
   if (config.isRunTypeActive(DeviceType.android)) {
-    for (ConfigDevice device in config.androidDevices) {
+    for (var device in config.androidDevices) {
       for (final locale in config.locales) {
         await _clearFastlaneDir(
             screens, device.name, locale, DeviceType.android, runMode);
@@ -20,7 +21,7 @@ Future clearFastlaneDirs(
     }
   }
   if (config.isRunTypeActive(DeviceType.ios)) {
-    for (ConfigDevice device in config.iosDevices) {
+    for (var device in config.iosDevices) {
       for (final locale in config.locales) {
         await _clearFastlaneDir(
             screens, device.name, locale, DeviceType.ios, runMode);
@@ -30,14 +31,13 @@ Future clearFastlaneDirs(
 }
 
 /// Clear images destination.
-Future _clearFastlaneDir(Screens screens, String deviceName, String locale,
+Future _clearFastlaneDir(ScreenManager screens, String deviceName, String locale,
     DeviceType deviceType, RunMode runMode) async {
-  final Map screenProps = screens.getScreen(deviceName);
-  String androidModelType = getAndroidModelType(screenProps, deviceName);
+  final screen = screens.getScreen(deviceName);
 
-  final dirPath = getDirPath(deviceType, locale, androidModelType);
+  final dirPath = getDirPath(deviceType, locale, screen?.destName ?? 'phone');
 
-  printStatus('Clearing images in $dirPath for \'$deviceName\'...');
+  //printStatus('Clearing images in $dirPath for \'$deviceName\'...');
   // delete images ending with .kImageExtension
   // for compatibility with FrameIt
   // (see https://github.com/mmcc007/screenshots/issues/61)
@@ -73,28 +73,19 @@ String getDirPath(
   return dirPath;
 }
 
-/// Get android model type (phone or tablet screen size).
-String getAndroidModelType(Map screenProps, String deviceName) {
-  String androidDeviceType = kFastlanePhone;
-  if (screenProps == null) {
-    printStatus(
-        'Warning: using default value \'$kFastlanePhone\' in \'$deviceName\' fastlane directory.');
-  } else {
-    androidDeviceType = screenProps['destName'];
-  }
-  return androidDeviceType;
-}
-
 /// Clears files matching a pattern in a directory.
 /// Creates directory if none exists.
 void deleteMatchingFiles(String dirPath, RegExp pattern) {
-  if (fs.directory(dirPath).existsSync()) {
-    fs.directory(dirPath).listSync().toList().forEach((e) {
-      if (pattern.hasMatch(p.basename(e.path))) {
-        fs.file(e.path).deleteSync();
+  var dir = Directory(dirPath);
+
+  if (dir.existsSync()) {
+    var items = dir.listSync().toList();
+    for (var item in items) {
+      if (pattern.hasMatch(p.basename(item.path))) {
+        File(item.path).deleteSync();
       }
-    });
+    }
   } else {
-    fs.directory(dirPath).createSync(recursive: true);
+    dir.createSync(recursive: true);
   }
 }

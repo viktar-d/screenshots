@@ -1,17 +1,18 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:screenshots/screenshots.dart';
 import 'package:screenshots/src/utils.dart';
-import 'package:tool_base/tool_base.dart';
+import 'package:screenshots/src/screens.dart';
 
-import 'context_runner.dart';
 
 final ImageMagick _kImageMagick = ImageMagick();
 
 /// Currently active implementation of ImageMagick.
 ///
 /// Override this in tests with a fake/mocked daemon client.
-ImageMagick get im => context.get<ImageMagick>() ?? _kImageMagick;
+ImageMagick im = _kImageMagick;
 
 class ImageMagick {
   static const _kThreshold = 0.76;
@@ -24,6 +25,25 @@ class ImageMagick {
     return _imageMagick;
   }
   ImageMagick._internal();
+
+
+  static Future<void> frame(DeviceScreen screen, String path) async {
+    final backgroundColor = screen.deviceType == DeviceType.ios ? 'xc:white' : 'xc:none';
+
+    final cmdOptions = <String>[
+      '-size ${screen.sizeString} $backgroundColor',
+      '( $path -resize ${screen.resizeString} )',
+      '-gravity center',
+      '-geometry ${screen.offsetString}',
+      '-composite',
+      '( ${screen.resources!.framePath} -resize ${screen.resizeString} )',
+      '-gravity center',
+      '-composite',
+      path
+    ];
+
+    _imageMagickCmd('convert', cmdOptions);
+  }
 
   ///
   /// ImageMagick calls.
@@ -115,7 +135,7 @@ class ImageMagick {
 
     if (returnCode == 0) {
       // delete no-diff diff image created by image magick
-      fs.file(diffImage).deleteSync();
+      File(diffImage).deleteSync();
     }
     return returnCode == 0;
   }
@@ -131,19 +151,18 @@ class ImageMagick {
   }
 
   void deleteDiffs(String dirPath) {
-    fs
-        .directory(dirPath)
-        .listSync()
-        .where((fileSysEntity) =>
-            p.basename(fileSysEntity.path).contains(kDiffSuffix))
-        .forEach((diffImage) => fs.file(diffImage.path).deleteSync());
+    var dir = Directory(dirPath);
+
+    dir.listSync()
+        .where((element) => p.basename(element.path).contains(kDiffSuffix))
+        .forEach((diffImage) => File(diffImage.path).deleteSync());
   }
 
   /// Different command for windows (based on recommended installed version!)
-  List<String> _getPlatformCmd(String imCmd, List imCmdArgs) {
+  static List<String> _getPlatformCmd(String imCmd, List imCmdArgs) {
     // windows uses ImageMagick v7 or later which by default does not
     // have the legacy commands.
-    if (platform.isWindows) {
+    if (Platform.isWindows) {
       return [
         ...['magick'],
         ...[imCmd],
@@ -158,7 +177,7 @@ class ImageMagick {
   }
 
   /// ImageMagick command
-  int _imageMagickCmd(String imCmd, List imCmdArgs) {
+  static int _imageMagickCmd(String imCmd, List imCmdArgs) {
     return runCmd(_getPlatformCmd(imCmd, imCmdArgs));
   }
 }
@@ -167,9 +186,7 @@ class ImageMagick {
 /// Check Image Magick is installed.
 Future<bool> isImageMagicInstalled() async {
   try {
-    return await runInContext<bool>(() {
-      return runCmd(platform.isWindows ? ['magick', '-version'] : ['convert', '-version']) == 0;
-    });
+    return runCmd(Platform.isWindows ? ['magick', '-version'] : ['convert', '-version']) == 0;
   } catch (e) {
     return false;
   }
