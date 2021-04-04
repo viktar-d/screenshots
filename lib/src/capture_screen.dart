@@ -5,7 +5,7 @@ import 'config.dart';
 import 'globals.dart';
 
 /// Called by integration test to capture images.
-Future screenshot(final driver, Config config, String name,
+Future screenshot(final driver, String name,
     {Duration timeout = const Duration(seconds: 30),
     bool silent = false,
     bool waitUntilNoTransientCallbacks = true
