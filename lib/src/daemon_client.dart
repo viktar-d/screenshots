@@ -46,10 +46,15 @@ class DaemonClient {
   /// Start flutter tools daemon.
   Future<void> init() async {
     if (!_connected) {
-      _process = await startBackgroundProcess(['flutter', 'daemon']);
+      _process = await processManager.start(
+          ['flutter', 'daemon'],
+          mode: ProcessStartMode.detachedWithStdio
+      );
+
       _listen();
       _waitForConnection = Completer<bool>();
       _connected = await _waitForConnection!.future;
+
       await enableDeviceDiscovery();
       // maybe should check if iOS run type is active
       if (Platform.isMacOS) _iosDevices = getIosDevices();

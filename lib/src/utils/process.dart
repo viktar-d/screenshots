@@ -20,8 +20,6 @@ Future<Process> startBackgroundProcess(
   }
 ) async {
   return await processManager.start(cmd,
-      workingDirectory: workingDirectory,
-      environment: environment,
       includeParentEnvironment: includeParentEnvironment,
       runInShell: runInShell,
       mode: ProcessStartMode.detached
