@@ -27,8 +27,8 @@ class ScreenResources {
   static ScreenResources fromYaml(final Map<dynamic, dynamic> yaml) {
     return ScreenResources(
       statusbar: yaml['statusbar'] as String,
-      statusbarBlack: yaml['statusbarBlack'] as String,
-      statusbarWhite: yaml['statusbarWhite'] as String,
+      statusbarBlack: yaml['statusbar black'] as String,
+      statusbarWhite: yaml['statusbar white'] as String,
       frame: yaml['frame']  as String,
       navbar: yaml['navbar'] as String?,
     );
@@ -104,7 +104,7 @@ class DeviceScreen {
 
     return DeviceScreen(
       deviceType: type,
-      destName: yaml['destName'] as String,
+      destName: yaml['destName'] as String? ?? 'phone',
       devices: List<String>.from(yaml['devices'] as List<dynamic>? ?? <dynamic>[]),
       resize: resizeString == null ? 1 : _parseResize(resizeString),
       offset: offsetString == null ? Tuple<int, int>(0, 0) : _parseOffset(offsetString),
