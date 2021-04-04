@@ -1,0 +1,9 @@
+tests:
+  - test_driver/translations.dart
+
+locales:
+  - en-US
+
+devices:
+  android:
+    Pixel 4 API 30:

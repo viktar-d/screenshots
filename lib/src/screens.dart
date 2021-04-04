@@ -100,12 +100,12 @@ class DeviceScreen {
     final resizeString = yaml['resize'] as String?;
     final offsetString = yaml['offset'] as String?;
 
-    final resources = yaml['resources'];
+    final resources = yaml['resources'] as Map<dynamic, dynamic>?;
 
     return DeviceScreen(
       deviceType: type,
       destName: yaml['destName'] as String,
-      devices: List<String>.from(yaml['devices']),
+      devices: List<String>.from(yaml['devices'] as List<dynamic>? ?? <dynamic>[]),
       resize: resizeString == null ? 1 : _parseResize(resizeString),
       offset: offsetString == null ? Tuple<int, int>(0, 0) : _parseOffset(offsetString),
       size: sizeString == null ? Tuple<int, int>(1080, 1920) : _parseSize(sizeString),
@@ -126,10 +126,12 @@ class DeviceScreen {
     for (var i = 1; i < offsetString.length; i++) {
       final char = offsetString[i];
 
-      if (char == '+' || char == '-') {
+      if (current.isNotEmpty && (char == '+' || char == '-')) {
         x = int.parse(current);
         current = '';
       }
+
+      current += char;
     }
 
     y = int.parse(current);
@@ -145,9 +147,7 @@ class DeviceScreen {
   }
 
   /// Test if screen is used for identifying android model type.
-  bool get isAndroidModelTypeScreen => size == null;
-
-
+  bool get isAndroidModelTypeScreen => resources == null;
 }
 
 /// Manage screens
@@ -164,23 +164,23 @@ class ScreenManager {
     final resource = Resource('package:screenshots3/$_screensPath');
 
     var screens = await resource.readAsString(encoding: utf8);
-    var yaml = loadYaml(screens);
+    var yaml = loadYaml(screens) as Map<dynamic, dynamic>;
 
     return fromYaml(yaml);
   }
 
   static ScreenManager fromYaml(final Map<dynamic, dynamic> yaml) {
-    var ios = yaml['ios'] as Map;
-    var android = yaml['android'] as Map;
+    var ios = yaml['ios'] as Map<dynamic, dynamic>;
+    var android = yaml['android'] as Map<dynamic, dynamic>;
 
     var map = <String, DeviceScreen>{};
 
     for (var entry in ios.entries) {
-      map[entry.key] = DeviceScreen.fromYaml(entry.value, DeviceType.ios);
+      map[entry.key as String] = DeviceScreen.fromYaml(entry.value as Map<dynamic, dynamic>, DeviceType.ios);
     }
 
     for (var entry in android.entries) {
-      map[entry.key] = DeviceScreen.fromYaml(entry.value, DeviceType.android);
+      map[entry.key as String] = DeviceScreen.fromYaml(entry.value as Map<dynamic, dynamic>, DeviceType.android);
     }
 
     return ScreenManager(screens: map);

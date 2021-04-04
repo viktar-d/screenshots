@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
+import 'package:path/path.dart';
 import 'package:screenshots3/screenshots.dart';
 import 'package:screenshots3/src/utils.dart';
 import 'package:screenshots3/src/screens.dart';
+
+import 'globals.dart';
 
 
 final ImageMagick _kImageMagick = ImageMagick();
@@ -26,6 +28,8 @@ class ImageMagick {
   }
   ImageMagick._internal();
 
+  static const _kCrop = '1000x40+0+0'; // default sample size and location to test for brightness
+
 
   static Future<void> frame(DeviceScreen screen, String path) async {
     final backgroundColor = screen.deviceType == DeviceType.ios ? 'xc:white' : 'xc:none';
@@ -45,72 +49,40 @@ class ImageMagick {
     _imageMagickCmd('convert', cmdOptions);
   }
 
-  ///
-  /// ImageMagick calls.
-  ///
-  Future convert(String command, Map options) async {
-    List<String> cmdOptions;
-    switch (command) {
-      case 'overlay':
-        cmdOptions = [
-          options['screenshotPath'],
-          options['statusbarPath'],
-          '-gravity',
-          'north',
-          '-composite',
-          options['screenshotPath'],
-        ];
-        break;
-      case 'append':
-        // convert -append screenshot_statusbar.png navbar.png final_screenshot.png
-        cmdOptions = [
-          '-append',
-          options['screenshotPath'],
-          options['screenshotNavbarPath'],
-          options['screenshotPath'],
-        ];
-        break;
-      case 'frame':
-//  convert -size $size xc:skyblue \
-//   \( "$frameFile" -resize $resize \) -gravity center -composite \
-//   \( final_screenshot.png -resize $resize \) -gravity center -geometry -4-9 -composite \
-//   framed.png
+  static Future<void> overlay(ScreenResources resources, String path) async {
+    late final String statusbarPath;
 
-        cmdOptions = [
-          '-size',
-          options['size'],
-          options['backgroundColor'],
-          '(',
-          options['screenshotPath'],
-          '-resize',
-          options['resize'],
-          ')',
-          '-gravity',
-          'center',
-          '-geometry',
-          options['offset'],
-          '-composite',
-          '(',
-          options['framePath'],
-          '-resize',
-          options['resize'],
-          ')',
-          '-gravity',
-          'center',
-          '-composite',
-          options['screenshotPath']
-        ];
-        break;
-      default:
-        throw 'unknown command: $command';
+    if (isThresholdExceeded(path, _kCrop)) {
+      statusbarPath = '$kTempDir/${resources.statusbarBlack}';
+    } else {
+      statusbarPath = '$kTempDir/${resources.statusbarWhite}';
     }
+
+    final cmdOptions = <String>[
+      path,
+      statusbarPath,
+      '-gravity north',
+      '-composite $path',
+    ];
+
+    _imageMagickCmd('convert', cmdOptions);
+  }
+
+  static Future<void> append(ScreenResources resources, String path) async {
+    final cmdOptions = <String>[
+      '-append',
+      path,
+      '$kTempDir/${resources.navbar}',
+      path,
+    ];
+
     _imageMagickCmd('convert', cmdOptions);
   }
 
   /// Checks if brightness of sample of image exceeds a threshold.
   /// Section is specified by [cropSizeOffset] which is of the form
   /// cropSizeOffset, eg, '1242x42+0+0'.
-  bool isThresholdExceeded(String imagePath, String cropSizeOffset,
+  static bool isThresholdExceeded(String imagePath, String cropSizeOffset,
       [double threshold = _kThreshold]) {
     //convert logo.png -crop $crop_size$offset +repage -colorspace gray -format "%[fx:(mean>$threshold)?1:0]" info:
     final result = cmd(_getPlatformCmd('convert', <String>[
@@ -142,11 +114,11 @@ class ImageMagick {
 
   /// Append diff suffix [kDiffSuffix] to [imagePath].
   String getDiffImagePath(String imagePath) {
-    final diffName = p.dirname(imagePath) +
+    final diffName = dirname(imagePath) +
         '/' +
-        p.basenameWithoutExtension(imagePath) +
+        basenameWithoutExtension(imagePath) +
         kDiffSuffix +
-        p.extension(imagePath);
+        extension(imagePath);
     return diffName;
   }
 
@@ -154,12 +126,12 @@ class ImageMagick {
     var dir = Directory(dirPath);
 
     dir.listSync()
-        .where((element) => p.basename(element.path).contains(kDiffSuffix))
+        .where((element) => basename(element.path).contains(kDiffSuffix))
         .forEach((diffImage) => File(diffImage.path).deleteSync());
   }
 
   /// Different command for windows (based on recommended installed version!)
-  static List<String> _getPlatformCmd(String imCmd, List imCmdArgs) {
+  static List<String> _getPlatformCmd(String imCmd, List<String> imCmdArgs) {
     // windows uses ImageMagick v7 or later which by default does not
     // have the legacy commands.
     if (Platform.isWindows) {
@@ -177,7 +149,7 @@ class ImageMagick {
   }
 
   /// ImageMagick command
-  static int _imageMagickCmd(String imCmd, List imCmdArgs) {
+  static int _imageMagickCmd(String imCmd, List<String> imCmdArgs) {
     return runCmd(_getPlatformCmd(imCmd, imCmdArgs));
   }
 }

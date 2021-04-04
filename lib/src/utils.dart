@@ -38,42 +38,43 @@ void moveFiles(String srcDir, String dstDir) {
 /// Creates a list of available iOS simulators.
 /// (really just concerned with simulators for now).
 /// Provides access to their IDs and status'.
-Map getIosSimulators() {
+Map<String, dynamic> getIosSimulators() {
   final simulators = cmd(['xcrun', 'simctl', 'list', 'devices', '--json']);
-  final simulatorsInfo = jsonDecode(simulators)['devices'];
+  final simulatorsInfo = jsonDecode(simulators)['devices'] as Map<String, dynamic>;
   return transformIosSimulators(simulatorsInfo);
 }
 
 /// Transforms latest information about iOS simulators into more convenient
 /// format to index into by simulator name.
 /// (also useful for testing)
-Map transformIosSimulators(Map simsInfo) {
+Map<String, dynamic> transformIosSimulators(Map<String, dynamic> simsInfo) {
   // transform json to a Map of device name by a map of iOS versions by a list of
   // devices with a map of properties
   // ie, Map<String, Map<String, List<Map<String, String>>>>
   // In other words, just pop-out the device name for 'easier' access to
   // the device properties.
-  Map simsInfoTransformed = {};
+  final simsInfoTransformed = <String, dynamic>{};
 
-  simsInfo.forEach((iOSName, sims) {
+  simsInfo.forEach((iOSName, dynamic sims) {
     // note: 'isAvailable' field does not appear consistently
     //       so using 'availability' as well
-    isSimAvailable(sim) =>
+    bool isSimAvailable(Map<String, dynamic> sim) =>
         sim['availability'] == '(available)' || sim['isAvailable'] == true;
-    for (final sim in sims) {
+
+    for (final Map<String, dynamic> sim in sims) {
       // skip if simulator unavailable
       if (!isSimAvailable(sim)) continue;
 
       // init iOS versions map if not already present
       if (simsInfoTransformed[sim['name']] == null) {
-        simsInfoTransformed[sim['name']] = {};
+        simsInfoTransformed[sim['name'] as String] = <String, dynamic>{};
       }
 
       // init iOS version simulator array if not already present
       // note: there can be multiple versions of a simulator with the same name
       //       for an iOS version, hence the use of an array.
       if (simsInfoTransformed[sim['name']][iOSName] == null) {
-        simsInfoTransformed[sim['name']][iOSName] = [];
+        simsInfoTransformed[sim['name']][iOSName] = <String>[];
       }
 
       // add simulator to iOS version simulator array
@@ -84,14 +85,15 @@ Map transformIosSimulators(Map simsInfo) {
 }
 
 // finds the iOS simulator with the highest available iOS version
-Map getHighestIosSimulator(Map iosSims, String simName) {
-  final Map iOSVersions = iosSims[simName];
+Map<String, dynamic> getHighestIosSimulator(Map<String, dynamic> iosSims, String simName) {
+  final iOSVersions = iosSims[simName] as Map<String, dynamic>;
 
   // get highest iOS version
   var iOSVersionName = getHighestIosVersion(iOSVersions);
 
-  final iosVersionSims = iosSims[simName][iOSVersionName];
-  if (iosVersionSims.length == 0) {
+  final iosVersionSims = iOSVersions[iOSVersionName] as List<Map<String, dynamic>>;
+
+  if (iosVersionSims.isEmpty) {
     throw "Error: no simulators found for \'$simName\'";
   }
   // use the first device found for the iOS version
@@ -99,7 +101,7 @@ Map getHighestIosSimulator(Map iosSims, String simName) {
 }
 
 // returns name of highest iOS version names
-String getHighestIosVersion(Map iOSVersions) {
+String getHighestIosVersion(Map<String, dynamic> iOSVersions) {
   // sort keys in iOS version order
   final iosVersionNames = iOSVersions.keys.toList();
   iosVersionNames.sort((v1, v2) {
@@ -243,9 +245,12 @@ String getIosSimulatorLocale(String udId) {
     globalPreferences.writeAsStringSync(contents);
     cmd(['plutil', '-convert', 'binary1', globalPreferences.path]);
   }
+
   final localeInfo = jsonDecode(
-      cmd(['plutil', '-convert', 'json', '-o', '-', globalPreferencesPath]));
-  final locale = localeInfo['AppleLocale'];
+      cmd(['plutil', '-convert', 'json', '-o', '-', globalPreferencesPath])
+  ) as Map<String, dynamic>;
+
+  final locale = localeInfo['AppleLocale'] as String;
   return locale;
 }
 
@@ -311,9 +316,9 @@ Future<String> waitSysLogMsg(
     'adb',
     '-s', deviceId, 'logcat', '-c']);
 //  await Future.delayed(Duration(milliseconds: 1000)); // wait for log to clear
-  await Future.delayed(Duration(milliseconds: 500)); // wait for log to clear
+  await Future<void>.delayed(Duration(milliseconds: 500)); // wait for log to clear
   // -b main ContactsDatabaseHelper:I '*:S'
-  final delegate = await processManager.start([
+  final delegate = await processManager.start(<String>[
     'adb', //getAdbPath(androidSdk),
     '-s',
     deviceId,
@@ -335,20 +340,20 @@ Future<String> waitSysLogMsg(
 
 
 /// Run command and return stdout as [string].
-String cmd(List<String> cmd, {String? workingDirectory}) {
+String cmd(List<String> cmd) {
   final result = processManager.runSync(
     cmd,
-    workingDirectory: workingDirectory,
-    runInShell: true
+    runInShell: true,
+    stdoutEncoding: utf8
   );
   //if (!silent) printStatus(result.stdout);
   if (result.exitCode != 0) {
     //if (silent) printError(result.stdout);
     //printError(result.stderr);
-    throw 'command failed: exitcode=${result.exitCode}, cmd=\'${cmd.join(" ")}\', workingDir=$workingDirectory';
+    throw 'command failed: exitcode=${result.exitCode}, cmd=\'${cmd.join(" ")}\'';
   }
   // return stdout
-  return result.stdout;
+  return result.stdout as String;
 }
 
 /// Run command and return exit code as [int].
@@ -367,15 +372,13 @@ int runCmd(List<String> cmd) {
 /// and stream stdout/stderr.
 Future<void> streamCmd(
   List<String> cmd, {
-  String? workingDirectory,
   Map<String, String> environment = const {},
 }) async {
   var exitCode = await runCommandAndStreamOutput(
       cmd,
-      workingDirectory: workingDirectory,
       environment: environment
   );
   if (exitCode != 0) {
-    throw 'command failed: exitcode=$exitCode, cmd=\'${cmd.join(" ")}\', workingDirectory=$workingDirectory';
+    throw 'command failed: exitcode=$exitCode, cmd=\'${cmd.join(" ")}\'';
   }
 }

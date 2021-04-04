@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'config.dart';
 import 'globals.dart';
+import 'package:flutter_driver/flutter_driver.dart';
 
-/// Called by integration test to capture images.
-Future screenshot(final driver, String name,
+
+Future<void> screenshot(final FlutterDriver driver, String name,
     {Duration timeout = const Duration(seconds: 30),
     bool silent = false,
     bool waitUntilNoTransientCallbacks = true

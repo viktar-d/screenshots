@@ -36,7 +36,6 @@ Future<Process> startBackgroundProcess(
 /// to [mapFunction] for further processing.
 Future<int> runCommandAndStreamOutput(
     List<String> cmd, {
-      String? workingDirectory,
       bool allowReentrantFlutter = false,
       String prefix = '',
       RegExp? filter,
@@ -48,7 +47,6 @@ Future<int> runCommandAndStreamOutput(
 
   final process = await processManager.start(
     cmd,
-    workingDirectory: workingDirectory,
     environment: environment,
   );
 
@@ -64,7 +62,7 @@ Future<int> runCommandAndStreamOutput(
       .where((String line) => filter == null || filter.hasMatch(line))
       .listen((String line) => mapFunction?.call(line));
 
-  await Future.wait([stdoutSubscription.asFuture(), stderrSubscription.asFuture()]);
+  await Future.wait([stdoutSubscription.asFuture<String>(), stderrSubscription.asFuture<String>()]);
   await Future.wait([stdoutSubscription.cancel(), stderrSubscription.cancel()]);
 
   return await process.exitCode;

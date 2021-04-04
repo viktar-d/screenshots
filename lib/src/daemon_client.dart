@@ -38,16 +38,16 @@ class DaemonClient {
   Completer<String>? _waitForResponse;
   Completer<String>? _waitForEvent;
 
-  List _iosDevices = []; // contains model of device, used by screenshots
+  List<RunningDevice> _iosDevices = <RunningDevice>[]; // contains model of device, used by screenshots
 
-  late StreamSubscription _stdOutListener;
-  late StreamSubscription _stdErrListener;
+  late StreamSubscription<String> _stdOutListener;
+  late StreamSubscription<List<int>> _stdErrListener;
 
   /// Start flutter tools daemon.
   Future<void> init() async {
     if (!_connected) {
       _process = await processManager.start(
-          ['flutter', 'daemon'],
+        <String>['flutter', 'daemon'],
       );
 
       _listen();
@@ -99,7 +99,7 @@ class DaemonClient {
 
     for (var emulator in emulators) {
       final type = emulator['platform'] == 'ios' ? DeviceType.ios : DeviceType.android;
-      results.add(RunningDevice(emulator['name'], type, true));
+      results.add(RunningDevice(emulator['name'] as String, type, true));
     }
 
     final devices = await runningDevices;
@@ -115,12 +115,11 @@ class DaemonClient {
     final devices = await _sendCommandWaitResponse('device.getDevices');
     for (var device in devices) {
       if (device['platform'] == 'ios' && device['emulator'] == false) {
-        final iosDevice = _iosDevices.firstWhere(
-                (element) => element['id'] == device['id']);
-        results.add(RunningDevice(iosDevice['model'], DeviceType.ios, false));
+        final iosDevice = _iosDevices.firstWhere((item) => item.deviceId == device['id']);
+        results.add(iosDevice);
       } else {
         final type = device['platform'] == 'ios' ? DeviceType.ios : DeviceType.android;
-        results.add(RunningDevice(device['name'], type, device['emulator']));
+        results.add(RunningDevice(device['name'] as String, type, device['emulator'] as bool));
       }
     }
 
@@ -135,7 +134,7 @@ class DaemonClient {
       started = devices.any(
               (device) => device.deviceId == deviceId && device.isEmulator);
 
-      await Future.delayed(Duration(milliseconds: 1000));
+      await Future<void>.delayed(Duration(milliseconds: 1000));
     }
   }
 
@@ -149,10 +148,10 @@ class DaemonClient {
 
   Future<String> _launchIosSimulator(Device device) async {
     final simulator = getHighestIosSimulator(getIosSimulators(), device.deviceId);
-    final deviceId = simulator['udid'];
+    final deviceId = simulator['udid'] as String;
 
     cmd(['xcrun', 'simctl', 'boot', deviceId]);
-    await Future.delayed(Duration(seconds: 2));
+    await Future<void>.delayed(Duration(seconds: 2));
     await waitForEmulatorToStart(deviceId);
 
     return deviceId;
@@ -162,30 +161,30 @@ class DaemonClient {
   Future<String> _launchAndroidEmulator(Device device) async {
     _waitForEvent = Completer<String>();
 
-    _sendCommand('emulator.launch', {'emulatorId': device.deviceId});
+    _sendCommand('emulator.launch', <String, dynamic>{'emulatorId': device.deviceId});
 
     // wait for expected device-added-emulator event
     // Note: future does not complete if emulator already running
-    final results = await Future.wait(<Future>[_waitForResponse!.future, _waitForEvent!.future]);
+    final results = await Future.wait([_waitForResponse!.future, _waitForEvent!.future]);
     // process the response
     _processResponse(results[0], 'emulator.launch');
     // process the event
     final event = results[1];
-    final eventInfo = jsonDecode(event);
+    final eventInfo = jsonDecode(event) as Map<String, dynamic>;
     if (eventInfo.length != 1 ||
         eventInfo[0]['event'] != 'device.added' ||
         eventInfo[0]['params']['emulator'] != true) {
       throw 'Error: emulator ${device.deviceId} not started: $event';
     }
 
-    return Future.value(eventInfo[0]['params']['id']);
+    return Future.value(eventInfo[0]['params']['id'] as String);
   }
 
   /// Wait for an event of type [EventType] and return event info.
-  Future<Map> waitForEvent(EventType eventType) async {
+  Future<Map<String, dynamic>> waitForEvent(EventType eventType) async {
     _waitForEvent = Completer<String>();
 
-    final eventInfo = jsonDecode(await _waitForEvent!.future);
+    final eventInfo = jsonDecode(await _waitForEvent!.future) as Map<String, dynamic>;
 
     switch (eventType) {
       case EventType.deviceRemoved:
@@ -198,7 +197,7 @@ class DaemonClient {
       default:
         throw 'Error: unexpected event: $eventInfo';
     }
-    return Future.value(eventInfo[0]['params']);
+    return Future.value(eventInfo[0]['params'] as Map<String, dynamic>);
   }
 
   int _exitCode = 0;
@@ -215,7 +214,7 @@ class DaemonClient {
   }
 
 
-  void _sendCommand(String method, [Map<String, dynamic> params = const {}]) {
+  void _sendCommand(String method, [Map<String, dynamic> params = const <String, dynamic>{}]) {
     if (!_connected) throw StateError('Not connected to daemon');
 
     _waitForResponse = Completer<String>();
@@ -230,8 +229,8 @@ class DaemonClient {
     _process.stdin.writeln(commandString);
   }
 
-  Future<List> _sendCommandWaitResponse(String method, {
-    Map<String, dynamic> params = const {},
+  Future<List<dynamic>> _sendCommandWaitResponse(String method, {
+    Map<String, dynamic> params = const <String, dynamic>{},
   }) async {
     _sendCommand(method, params);
 //    printTrace('waiting for response: $command');
@@ -243,18 +242,18 @@ class DaemonClient {
   List<dynamic> _processResponse(String response, String command) {
     if (response.contains('result')) {
       final respExp = RegExp(r'result":(.*)}\]');
-      return jsonDecode(respExp.firstMatch(response)!.group(1)!);
+      return jsonDecode(respExp.firstMatch(response)!.group(1)!) as List<dynamic>;
     } else if (response.contains('error')) {
       // todo: handle errors separately
       throw 'Error: command $command failed:\n ${jsonDecode(response)[0]['error']}';
     } else {
-      return jsonDecode(response);
+      return jsonDecode(response) as List<dynamic>;
     }
   }
 }
 
 /// Get attached ios devices with id and model.
-List getIosDevices() {
+List<RunningDevice> getIosDevices() {
   final regExp = RegExp(r'Found (\w+) \(\w+, (.*), \w+, \w+\)');
   final noAttachedDevices = 'no attached devices';
   final iosDeployDevices =
@@ -265,11 +264,12 @@ List getIosDevices() {
   if (iosDeployDevices.isEmpty || iosDeployDevices[0] == noAttachedDevices) {
     return [];
   }
-  return iosDeployDevices.map((line) {
-    final matches = regExp.firstMatch(line);
-    final device = {};
-    device['id'] = matches!.group(1);
-    device['model'] = matches!.group(2);
-    return device;
+
+  return iosDeployDevices.where((line) {
+      final match = regExp.firstMatch(line);
+      return match != null && match.groupCount >= 2;
+  }).map((line) {
+      final matches = regExp.firstMatch(line);
+      return RunningDevice(matches!.group(2)!, DeviceType.ios, false);
   }).toList();
 }

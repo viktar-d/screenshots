@@ -52,12 +52,15 @@ class Device {
     }
   }
 
-  static Device fromYaml(Map<dynamic, dynamic> yaml, DeviceType type, List<RunningDevice> availableDevices) {
-
-    final deviceName = yaml['name'];
-
+  static Device fromYaml(
+      final String deviceName,
+      final Map<dynamic, dynamic> yaml,
+      final DeviceType type,
+      final List<RunningDevice> availableDevices
+  ) {
     final device = availableDevices.firstWhere((element) {
       if (element.deviceType != type) return false;
+      print(element.deviceId);
 
       if (element.isEmulator && element.deviceType == DeviceType.android) {
         return element
@@ -68,10 +71,10 @@ class Device {
       } else {
         return element.deviceId.contains(deviceName);
       }
-    });
+    }, orElse: () => throw StateError('No device found with name $deviceName'));
 
     var defaultFrame = true;
-    final orientationStringList = List<String>.of(yaml['orientation'] ?? ['Portrait']);
+    final orientationStringList = List<String>.of(yaml['orientation'] as List<String>? ?? ['Portrait']);
     final orientations = <Orientation>[];
 
     for (var orientationString in orientationStringList) {
@@ -100,9 +103,9 @@ class Device {
     return Device(
       deviceType: type,
       name: deviceName,
-      frame: yaml['frame'] ?? defaultFrame,
+      frame: yaml['frame'] as bool? ?? defaultFrame,
       orientations: orientations,
-      build: yaml['build'] ?? true,
+      build: yaml['build'] as bool? ?? true,
       deviceId: device.deviceId,
       emulator: device.isEmulator,
     );
@@ -123,21 +126,25 @@ class Config {
   });
 
   static Config fromYaml(final Map<dynamic, dynamic> yaml, List<RunningDevice> availableDevices) {
-
-    final iosDevices = yaml['devices']['ios'] ?? [];
-    final androidDevices = yaml['devices']['android'] ?? [];
+    final deviceMap = yaml['devices']['android'] as Map<dynamic, dynamic>? ?? <dynamic, dynamic>{};
+    if (Platform.isMacOS) {
+      deviceMap.addAll(yaml['devices']['ios'] as Map<dynamic, dynamic>? ?? <dynamic, dynamic>{});
+    }
 
     final devices = <Device>[];
 
-    devices.addAll(androidDevices.map((yaml) => Device.fromYaml(yaml, DeviceType.android, availableDevices)));
-    if (Platform.isMacOS) {
-      devices.addAll(iosDevices.map((yaml) =>
-          Device.fromYaml(yaml, DeviceType.ios, availableDevices)));
+    for (final item in deviceMap.entries) {
+      final value = item.value as Map<dynamic, dynamic>? ?? <dynamic, dynamic>{};
+      final key = item.key as String;
+
+      devices.add(
+        Device.fromYaml(key, value, DeviceType.android, availableDevices)
+      );
     }
 
     return Config (
-      tests: List<String>.from(yaml['test']),
-      locales: List<String>.from(yaml['locales']),
+      tests: List<String>.from(yaml['test'] as List<dynamic>? ?? <dynamic>[]),
+      locales: List<String>.from(yaml['locales'] as List<dynamic>? ?? <dynamic>[]),
       devices: devices,
     );
   }
@@ -151,7 +158,7 @@ class Config {
   List<String> get deviceNames => devices.map((e) => e.name).toList();
 
   static Config fromString(final String yamlString, List<RunningDevice> availableDevices) {
-    var yaml = loadYaml(yamlString);
+    final yaml = loadYaml(yamlString) as Map<dynamic, dynamic>;
     return fromYaml(yaml, availableDevices);
   }
 

@@ -5,7 +5,7 @@ import 'utils.dart' as utils;
 class Archive {
   static final _timeStamp = getTimestamp();
 
-  final archiveDirPrefix;
+  final String archiveDirPrefix;
 
   Archive(String archiveDir) : archiveDirPrefix = '$archiveDir/$_timeStamp';
 

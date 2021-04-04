@@ -57,11 +57,11 @@ class ImageProcessor {
         }
         for (final screenshotPath in screenshotPaths) {
           // add status bar for each screenshot
-          await overlay(screen.resources!, screenshotPath.path);
+          await ImageMagick.overlay(screen.resources!, screenshotPath.path);
 
           if (screen.deviceType == DeviceType.android) {
             // add nav bar for each screenshot
-            await append(screen.resources!, screenshotPath.path);
+            await ImageMagick.append(screen.resources!, screenshotPath.path);
           }
 
           await ImageMagick.frame(screen, screenshotPath.path);
@@ -110,6 +110,7 @@ class ImageProcessor {
     return true; // for testing
   }
 
+  /*
   static void showFailedCompare(Map failedCompare) {
     //printError('Comparison failed:');
 
@@ -119,9 +120,11 @@ class ImageProcessor {
     });
   }
 
-  static Future<Map> compareImages(
+   */
+
+  static Future<Map<dynamic, dynamic>> compareImages(
       String deviceName, String recordingDir, String comparisonDir) async {
-    Map failedCompare = {};
+    final failedCompare = <dynamic, dynamic>{};
     final recordedImages = Directory(recordingDir).listSync();
     Directory(comparisonDir)
         .listSync()
@@ -144,37 +147,5 @@ class ImageProcessor {
       }
     });
     return failedCompare;
-  }
-
-  /// Overlay status bar over screenshot.
-  static Future<void> overlay(ScreenResources resources, String screenshotPath) async {
-    final tmpDir = Directory.systemTemp.path;
-
-    late final String statusbarPath;
-    // select black or white status bar based on brightness of area to be overlaid
-    if (im.isThresholdExceeded(screenshotPath, _kCrop)) {
-      statusbarPath = '$tmpDir/${resources.statusbarBlack}';
-    } else {
-      statusbarPath = '$tmpDir/${resources.statusbarWhite}';
-    }
-
-    final options = {
-      'screenshotPath': screenshotPath,
-      'statusbarPath': statusbarPath,
-    };
-    await im.convert('overlay', options);
-  }
-
-  /// Append android navigation bar to screenshot.
-  static Future<void> append(ScreenResources screenResources, String screenshotPath) async {
-    final tmpDir = Directory.systemTemp.path;
-
-    final screenshotNavbarPath = '$tmpDir/${screenResources.navbar}';
-    final options = {
-      'screenshotPath': screenshotPath,
-      'screenshotNavbarPath': screenshotNavbarPath,
-    };
-
-    await im.convert('append', options);
   }
 }

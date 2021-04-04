@@ -56,7 +56,7 @@ void main(List<String> arguments) async {
   }
 
   // show help
-  if (argResults[helpArg]) {
+  if (argResults[helpArg] as bool) {
     _showUsage(argParser);
     exit(0);
   }
@@ -83,8 +83,8 @@ void main(List<String> arguments) async {
   }
 
   // validate args
-  if (!await File(argResults[configArg]).exists()) {
-    _handleError(argParser, "File not found: ${argResults[configArg]}");
+  if (!await File(argResults[configArg] as String).exists()) {
+    _handleError(argParser, 'File not found: ${argResults[configArg]}');
   }
 
   // Check flutter command is found
@@ -102,9 +102,9 @@ void main(List<String> arguments) async {
 
 
   final daemonClient = await DaemonClient.getInstance();
-  final devices = await daemonClient.runningDevices;
+  final devices = await daemonClient.devicesInfo;
 
-  final config = Config.loadFromFile(argResults[configArg], devices);
+  final config = Config.loadFromFile(argResults[configArg] as String, devices);
 
   /*
   if (config.isRunTypeActive(DeviceType.android)) {
@@ -138,7 +138,7 @@ void main(List<String> arguments) async {
     config: config,
     screenManager: manager,
     runMode: RunMode.normal, //argResults[modeArg],
-    flavor: argResults[flavorArg],
+    flavor: argResults[flavorArg] as String,
     isBuild: argResults.wasParsed(buildArg)
         ? argResults[buildArg] == 'true' ? true : false
         : null,

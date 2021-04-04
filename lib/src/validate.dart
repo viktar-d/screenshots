@@ -92,20 +92,19 @@ bool isValidTestPaths(String driverArgs) {
 }
 
 /// Checks if a simulator is installed, matching the device named in config file.
-bool isSimulatorInstalled(Map simulators, String deviceName) {
+bool isSimulatorInstalled(Map<String, dynamic> simulators, String deviceName) {
   // check simulator installed
-  bool isSimulatorInstalled = false;
-  simulators.forEach((simulatorName, iOSVersions) {
+  var isSimulatorInstalled = false;
+  simulators.forEach((simulatorName, dynamic iOSVersions) {
     if (simulatorName == deviceName) {
       // check for duplicate installs
-      final iOSVersionName = utils.getHighestIosVersion(iOSVersions);
-      final udid = iOSVersions[iOSVersionName][0]['udid'];
+      //final iOSVersionName = utils.getHighestIosVersion(iOSVersions as Map<String, dynamic>);
       // check for device present with multiple os's
       // or with duplicate name
-      if (iOSVersions.length > 1 || iOSVersions[iOSVersionName].length > 1) {
+      //if (iOSVersions.length > 1 || iOSVersions[iOSVersionName].length > 1) {
         //printStatus('Warning: \'$deviceName\' has multiple iOS versions.');
         //printStatus('       : Using \'$deviceName\' with iOS version $iOSVersionName (ID: $udid).');
-      }
+      //}
 
       isSimulatorInstalled = true;
     }

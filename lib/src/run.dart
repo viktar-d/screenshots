@@ -261,12 +261,12 @@ Future<void> shutdownSimulator(String deviceId) async {
   utils.cmd(['xcrun', 'simctl', 'shutdown', deviceId]);
   // shutdown apparently needs time when restarting
   // see https://github.com/flutter/flutter/issues/10228 for race condition on simulator
-  await Future.delayed(Duration(milliseconds: 2000));
+  await Future<void>.delayed(Duration(milliseconds: 2000));
 }
 
 Future<void> startSimulator(DaemonClient daemonClient, String deviceId) async {
   utils.cmd(['xcrun', 'simctl', 'boot', deviceId]);
-  await Future.delayed(Duration(milliseconds: 2000));
+  await Future<void>.delayed(Duration(milliseconds: 2000));
   await daemonClient.waitForEmulatorToStart(deviceId);
 }
 
@@ -312,7 +312,7 @@ Future<void> setAndroidEmulatorLocale(Device device, String locale) async {
     await utils.waitAndroidLocaleChange(device.deviceId, locale);
     // allow additional time before orientation change
 //    await Future.delayed(Duration(milliseconds: 5000));
-    await Future.delayed(Duration(milliseconds: 1000));
+    await Future<void>.delayed(Duration(milliseconds: 1000));
   }
 }
 
@@ -368,7 +368,7 @@ Future<String> shutdownAndroidEmulator(
   if (device['id'] != deviceId) {
     throw 'Error: device id \'$deviceId\' not shutdown';
   }
-  return device['id'];
+  return device['id'] as String;
 }
 
 ///// Start android emulator in a CI environment.
