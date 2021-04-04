@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:screenshots/screenshots.dart';
-import 'package:screenshots/src/globals.dart';
-import 'package:screenshots/src/utils.dart';
-import 'package:screenshots/src/utils/process.dart';
+import 'package:screenshots3/screenshots.dart';
+import 'package:screenshots3/src/globals.dart';
+import 'package:screenshots3/src/utils.dart';
+import 'package:screenshots3/src/utils/process.dart';
 
 enum EventType { deviceRemoved }
 

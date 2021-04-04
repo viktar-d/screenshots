@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:resource_portable/resource.dart';
-import 'package:screenshots/src/utils.dart';
+import 'package:screenshots3/src/utils.dart';
 import 'package:yaml/yaml.dart';
 
 import 'globals.dart';
@@ -48,7 +48,7 @@ class ScreenResources {
   }
 
   Future<void> _unpackImage(String uri) async {
-    final resource = Resource('package:screenshots/$uri');
+    final resource = Resource('package:screenshots3/$uri');
     final resourceImage = await resource.readAsBytes();
 
     final dstPath = '$kTempDir/$uri';
@@ -161,7 +161,7 @@ class ScreenManager {
   });
 
   static Future<ScreenManager> fromResource() async {
-    final resource = Resource('package:screenshots/$_screensPath');
+    final resource = Resource('package:screenshots3/$_screensPath');
 
     var screens = await resource.readAsString(encoding: utf8);
     var yaml = loadYaml(screens);

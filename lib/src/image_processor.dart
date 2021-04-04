@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:screenshots/src/config.dart';
-import 'package:screenshots/src/image_magick.dart';
-import 'package:screenshots/src/orientation.dart';
+import 'package:screenshots3/src/config.dart';
+import 'package:screenshots3/src/image_magick.dart';
+import 'package:screenshots3/src/orientation.dart';
 
 import 'archive.dart';
 import 'globals.dart';

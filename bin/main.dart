@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:screenshots/screenshots.dart';
-import 'package:screenshots/src/daemon_client.dart';
-import 'package:screenshots/src/globals.dart';
-import 'package:screenshots/src/screens.dart';
+import 'package:screenshots3/screenshots.dart';
+import 'package:screenshots3/src/daemon_client.dart';
+import 'package:screenshots3/src/globals.dart';
+import 'package:screenshots3/src/screens.dart';
 
 const usage =
     'usage: screenshots [-h] [-c <config file>] [-m <normal|recording|comparison|archive>] [-f <flavor>] [-b <true|false>] [-v]';

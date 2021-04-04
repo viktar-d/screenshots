@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart';
-import 'package:screenshots/src/config.dart';
-import 'package:screenshots/src/utils/process.dart';
+import 'package:screenshots3/src/config.dart';
+import 'package:screenshots3/src/utils/process.dart';
 
 import 'globals.dart';
 

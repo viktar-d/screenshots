@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:screenshots/src/daemon_client.dart';
-import 'package:screenshots/src/orientation.dart';
-import 'package:screenshots/src/utils.dart';
+import 'package:screenshots3/src/daemon_client.dart';
+import 'package:screenshots3/src/orientation.dart';
+import 'package:screenshots3/src/utils.dart';
 import 'package:yaml/yaml.dart';
 
 import 'globals.dart';

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:screenshots/src/image_magick.dart';
+import 'package:screenshots3/src/image_magick.dart';
 
 import 'config.dart';
 import 'screens.dart';

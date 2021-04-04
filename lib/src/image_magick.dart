@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:screenshots/screenshots.dart';
-import 'package:screenshots/src/utils.dart';
-import 'package:screenshots/src/screens.dart';
+import 'package:screenshots3/screenshots.dart';
+import 'package:screenshots3/src/utils.dart';
+import 'package:screenshots3/src/screens.dart';
 
 
 final ImageMagick _kImageMagick = ImageMagick();

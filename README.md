@@ -154,7 +154,7 @@ To capture screenshots in tests:
 2. In tests
     1. Import the dependency  
        ````dart
-       import 'package:screenshots/screenshots.dart';
+       import 'package:screenshots3/screenshots.dart';
        ````
     2. Create the config at start of test  
        ````dart

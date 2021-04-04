@@ -16,7 +16,7 @@ Future unpackScripts() async {
 
 /// Read script from resources and install in staging area.
 Future unpackScript(String srcPath, String dstDir) async {
-  final resource = Resource('package:screenshots/$srcPath');
+  final resource = Resource('package:screenshots3/$srcPath');
   final script = await resource.readAsString();
 
   final file = await File('$dstDir/$srcPath').create(recursive: true);
@@ -27,7 +27,7 @@ Future unpackScript(String srcPath, String dstDir) async {
 
 /// Read an image from resources.
 Future<List<int>> readResourceImage(String uri) async {
-  final resource = Resource('package:screenshots/$uri');
+  final resource = Resource('package:screenshots3/$uri');
   return resource.readAsBytes();
 }
 
