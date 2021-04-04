@@ -48,23 +48,49 @@ class DaemonClient {
     if (!_connected) {
       _process = await processManager.start(
           ['flutter', 'daemon'],
-          mode: ProcessStartMode.detachedWithStdio
       );
 
       _listen();
       _waitForConnection = Completer<bool>();
       _connected = await _waitForConnection!.future;
 
-      await enableDeviceDiscovery();
+      await _sendCommandWaitResponse('device.enable');
       // maybe should check if iOS run type is active
       if (Platform.isMacOS) _iosDevices = getIosDevices();
-      // wait for device discovery
-      await Future.delayed(Duration(milliseconds: 100));
     }
   }
 
-  Future enableDeviceDiscovery() async {
-    await _sendCommandWaitResponse('device.enable');
+  void _listen() {
+    _stdOutListener = _process.stdout
+        .transform<String>(utf8.decoder)
+        .transform<String>(LineSplitter())
+        .listen((String line) async {
+      //printTrace('<== $line');
+      // todo: decode json
+      if (line.contains('daemon.connected')) {
+        _waitForConnection?.complete(true);
+      } else {
+        // get response
+        if (line.contains('"result":') ||
+            line.contains('"error":') ||
+            line == '[{"id":${_messageId - 1}}]') {
+          _waitForResponse?.complete(line);
+        } else {
+          // get event
+          if (line.contains('[{"event":')) {
+            if (line.contains('"event":"daemon.logMessage"')) {
+              //printTrace('Warning: ignoring log message: $line');
+            } else {
+              _waitForEvent?.complete(line);
+            }
+          } else if (line != 'Starting device daemon...') {
+            throw 'Error: unexpected response from daemon: $line';
+          }
+        }
+      }
+    });
+
+    _stdErrListener = _process.stderr.listen(stderr.add);
   }
 
   Future<List<RunningDevice>> get devicesInfo async {
@@ -73,7 +99,7 @@ class DaemonClient {
 
     for (var emulator in emulators) {
       final type = emulator['platform'] == 'ios' ? DeviceType.ios : DeviceType.android;
-      results.add(RunningDevice(emulator['emulatorId'], type, true));
+      results.add(RunningDevice(emulator['name'], type, true));
     }
 
     final devices = await runningDevices;
@@ -188,38 +214,6 @@ class DaemonClient {
     return _exitCode;
   }
 
-  void _listen() {
-    _stdOutListener = _process.stdout
-        .transform<String>(utf8.decoder)
-        .transform<String>(const LineSplitter())
-        .listen((String line) async {
-      //printTrace('<== $line');
-      // todo: decode json
-      if (line.contains('daemon.connected')) {
-        _waitForConnection?.complete(true);
-      } else {
-        // get response
-        if (line.contains('"result":') ||
-            line.contains('"error":') ||
-            line == '[{"id":${_messageId - 1}}]') {
-          _waitForResponse?.complete(line);
-        } else {
-          // get event
-          if (line.contains('[{"event":')) {
-            if (line.contains('"event":"daemon.logMessage"')) {
-              //printTrace('Warning: ignoring log message: $line');
-            } else {
-              _waitForEvent?.complete(line);
-            }
-          } else if (line != 'Starting device daemon...') {
-            throw 'Error: unexpected response from daemon: $line';
-          }
-        }
-      }
-    });
-
-    _stdErrListener = _process.stderr.listen(stderr.add);
-  }
 
   void _sendCommand(String method, [Map<String, dynamic> params = const {}]) {
     if (!_connected) throw StateError('Not connected to daemon');
