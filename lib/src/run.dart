@@ -197,13 +197,16 @@ class Screenshots {
       final _isBuild = isBuild != null ? isBuild! : device.build;
       final isFlavor = flavor != kNoFlavor;
 
-      if (_isBuild) {
+      /*
+      if (!_isBuild) {
         command.add('--no-build');
       }
 
       if (isFlavor) {
         command.addAll(['--flavor', flavor]);
       }
+
+       */
 
       command.addAll(testPath.split(' ')); // add test path or custom command
       //printStatus(
