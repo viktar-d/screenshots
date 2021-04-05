@@ -25,5 +25,6 @@ void main() async {
 
   final config = Config(tests: [], locales: [], devices: [dev], sdkPath: 'C:\\src\\android-sdk');
 
-  dev.rotate(config, Orientation.Portrait);
+  //dev.rotate(config, Orientation.Portrait);
+  await dev.setLocale(config, 'en-US');
 }

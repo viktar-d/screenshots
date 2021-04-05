@@ -237,6 +237,7 @@ String cmd(List<String> cmd) {
   if (result.exitCode != 0) {
     //if (silent) printError(result.stdout);
     //printError(result.stderr);
+    print('cmd error: ${result.stderr}');
     throw 'command failed: exitcode=${result.exitCode}, cmd=\'${cmd.join(" ")}\'';
   }
   // return stdout

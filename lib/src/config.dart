@@ -188,7 +188,11 @@ class Device {
 
       cmd([config.adbPath, '-s', emulatorId!, 'shell', 'setprop',
         'persist.sys.locale', locale, ';', 'setprop', 'ctl.restart', 'zygote']);
+
+      print('locale set');
     }
+
+    print('aa');
   }
 
   Future<bool> _setSimulatorLocale(Config config, String locale) async {
