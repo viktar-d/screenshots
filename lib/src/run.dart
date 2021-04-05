@@ -167,6 +167,7 @@ class Screenshots {
 
           for (final orientation in device.orientations) {
             device.rotate(config, orientation);
+            print('runningProcessTests');
             await runProcessTests(device, locale, orientation);
           }
         }
