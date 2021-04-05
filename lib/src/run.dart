@@ -210,6 +210,7 @@ class Screenshots {
         //printStatus(
         //    'Warning: flavor parameter \'$flavor\' is ignored because no build is set for this device');
       }
+      print('starting: ${command.join(' ')}');
       await utils.streamCmd(command);
       // process screenshots
       //final imageProcessor = ImageProcessor(screenManager);
