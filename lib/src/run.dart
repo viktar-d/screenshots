@@ -192,7 +192,7 @@ class Screenshots {
   ) async {
     print(config.tests);
     for (final testPath in config.tests) {
-      final command = ['flutter', '-d', device.deviceId, 'drive'];
+      final command = ['flutter', '-d', device.emulatorId!, 'drive'];
 
       final _isBuild = isBuild != null ? isBuild! : device.build;
       final isFlavor = flavor != kNoFlavor;
