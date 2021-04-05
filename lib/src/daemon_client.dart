@@ -140,7 +140,7 @@ class DaemonClient {
     }
   }
 
-  Future<String> launchEmulator(Device device) {
+  Future<void> launchEmulator(Device device) {
     if (device.deviceType == DeviceType.android) {
       return _launchAndroidEmulator(device);
     } else {
@@ -160,7 +160,7 @@ class DaemonClient {
   }
 
   /// Launch an emulator and return device id.
-  Future<String> _launchAndroidEmulator(Device device) async {
+  Future<void> _launchAndroidEmulator(Device device) async {
     _waitForEvent = Completer<String>();
 
     _sendCommand('emulator.launch', <String, dynamic>{'emulatorId': device.deviceId});
@@ -179,7 +179,7 @@ class DaemonClient {
       throw 'Error: emulator ${device.deviceId} not started: $event';
     }
 
-    return Future.value(eventInfo[0]['params']['id'] as String);
+    device.emulatorId = await Future.value(eventInfo[0]['params']['id'] as String);
   }
 
   /// Wait for an event of type [EventType] and return event info.

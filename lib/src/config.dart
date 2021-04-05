@@ -1,7 +1,12 @@
+import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
+import 'package:resource_portable/resource.dart';
 import 'package:screenshots3/src/daemon_client.dart';
 import 'package:screenshots3/src/orientation.dart';
+import 'package:screenshots3/src/run.dart';
+import 'package:screenshots3/src/utils.dart';
 import 'package:yaml/yaml.dart';
 
 import 'globals.dart';
@@ -18,6 +23,8 @@ class Device {
   final bool build;
   final String deviceId;
   final bool emulator;
+
+  String? emulatorId;
 
   Device({
     required this.deviceType,
@@ -40,6 +47,120 @@ class Device {
       return 'ios/fastlane/screenshots/$locale';
     }
   }
+
+  Future<void> shutdown(Config config) async {
+    if (emulatorId == null) throw StateError('Device is not running');
+
+    if (deviceType == DeviceType.android) {
+      await _shutdownEmulator(config);
+    } else {
+      _shutdownSimulator();
+    }
+  }
+
+  Future<void> _shutdownEmulator(Config config) async {
+    cmd([config.adbPath, '-s', emulatorId!, 'emu', 'kill']);
+
+    final client = await DaemonClient.getInstance();
+    final device = await client.waitForEvent(EventType.deviceRemoved);
+
+    if (device['id'] != emulatorId) {
+      throw StateError('Device id $emulatorId was not shutdown');
+    }
+  }
+
+  Future<String> getLocale(Config config) async {
+    if (emulatorId == null) throw StateError('Device is not running');
+
+    if (deviceType == DeviceType.android) {
+      return _getAndroidLocale(config);
+    } else {
+      return await _getIOSLocale(config);
+    }
+  }
+
+  String _getAndroidLocale(Config config) {
+    var locale = cmd([config.adbPath, '-s', emulatorId!, 'shell', 'getprop', 'persist.sys.locale']);
+
+    if (locale.isEmpty) {
+      locale = cmd([config.adbPath, '-s', emulatorId!, 'shell', 'getprop ro.product.locale']);
+    }
+
+    return locale;
+  }
+
+  Future<String> _getIOSLocale(Config config) async {
+    final env = Platform.environment;
+    final globalPreferencesPath = '${env['HOME']}/Library/Developer/CoreSimulator/${emulatorId!}/data/Library/Preferences/.GlobalPreferences.plist';
+    final globalPreferences = File(globalPreferencesPath);
+
+    if (!globalPreferences.existsSync()) {
+      final resource = Resource('package:screenshots3/resources/defaultGlobalPreferences.plist');
+      globalPreferences.writeAsStringSync(await resource.readAsString());
+      cmd(['plutil', '-convert', 'binary1', globalPreferences.path]);
+    }
+
+    final localeInfo = jsonDecode(
+      cmd(['plutil', '-convert', 'json', '-o', '-', globalPreferencesPath])
+    ) as Map<String, dynamic>;
+
+    return localeInfo['AppLocale'] as String;
+  }
+
+  Future<void> setLocale(Config config, String locale) async {
+    if (deviceType == DeviceType.android) {
+      _setAndroidEmulatorLocale(config, locale);
+    } else {
+      final changed = await _setSimulatorLocale(config, locale);
+      if (changed) {
+        print('restarting simulator due to locale change...');
+
+        _shutdownSimulator();
+        await _startSimulator();
+      }
+    }
+  }
+
+  void _setAndroidEmulatorLocale(Config config, String locale) {
+    final deviceLocale = _getAndroidLocale(config);
+
+    if (canonicalizedLocale(deviceLocale) != canonicalizedLocale(locale)) {
+      if (cmd([config.adbPath, '-s', emulatorId!, 'root'])
+          == 'adbd cannot run as root in production builds\n') {
+        throw StateError('Cannot change locale of production emulator');
+      }
+
+      cmd([config.adbPath, '-s', emulatorId!, 'shell', 'setprop',
+        'persist.sys.locale', locale, ';', 'setprop', 'ctl.restart', 'zygote']);
+    }
+  }
+
+  Future<bool> _setSimulatorLocale(Config config, String locale) async {
+    final deviceLocale = await _getIOSLocale(config);
+
+    if (canonicalizedLocale(deviceLocale) != canonicalizedLocale(locale)) {
+      await streamCmd([
+        '$kTempDir/resources/script/simulator-controller',
+        emulatorId!, 'locale', locale
+      ]);
+
+      return true;
+    }
+
+    return false;
+  }
+
+  void _shutdownSimulator() {
+    cmd(['xcrun', 'simctl', 'shutdown', emulatorId!]);
+  }
+
+  Future<void> _startSimulator() async {
+    cmd(['xcrun', 'simctl', 'boot', emulatorId!]);
+
+    final client = await DaemonClient.getInstance();
+    await client.waitForEmulatorToStart(emulatorId!);
+  }
+
 
   static Device fromYaml(
       final String deviceName,
@@ -107,12 +228,23 @@ class Config {
   final List<String> locales;
 
   final List<Device> devices;
+  final String? sdkPath;
 
   Config({
     required this.tests,
     required this.locales,
     this.devices = const [],
+    this.sdkPath
   });
+
+  String get adbPath {
+    final separator = Platform.pathSeparator;
+    final extension = Platform.isWindows ? '.exe' : '';
+
+    return sdkPath == null
+        ? 'adb$extension'
+        : '$sdkPath${separator}platform-tools${separator}adb$extension';
+  }
 
   static Config fromYaml(final Map<dynamic, dynamic> yaml, List<RunningDevice> availableDevices) {
     final deviceMap = yaml['devices']['android'] as Map<dynamic, dynamic>? ?? <dynamic, dynamic>{};
@@ -135,6 +267,7 @@ class Config {
       tests: List<String>.from(yaml['test'] as List<dynamic>? ?? <dynamic>[]),
       locales: List<String>.from(yaml['locales'] as List<dynamic>? ?? <dynamic>[]),
       devices: devices,
+      sdkPath: yaml['sdkPath'] as String?
     );
   }
 

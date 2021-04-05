@@ -5,9 +5,10 @@ import 'package:screenshots3/screenshots.dart';
 import 'package:screenshots3/src/config.dart';
 import 'package:screenshots3/src/daemon_client.dart';
 import 'package:screenshots3/src/orientation.dart';
+import 'package:screenshots3/src/run.dart';
 
 void main() async {
-  Device dev = Device(
+  final dev = Device(
     emulator: true,
     name: "Galaxy S10",
     build: true,
@@ -18,8 +19,12 @@ void main() async {
     deviceId: 'Galaxy_S10',
   );
 
-  DaemonClient client = await DaemonClient.getInstance();
+  final client = await DaemonClient.getInstance();
   await client.devicesInfo;
 
-  client.launchEmulator(dev);
+  await client.launchEmulator(dev);
+
+  final config = Config(tests: [], locales: [], devices: [dev], sdkPath: 'C:\\src\\android-sdk');
+
+  await setDeviceLocale(config, dev, 'en-US', client);
 }

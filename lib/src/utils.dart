@@ -142,118 +142,6 @@ Future prefixFilesInDir(String dirPath, String prefix) async {
 /// Converts [_enum] value to [String].
 String getStringFromEnum(dynamic _enum) => _enum.toString().split('.').last;
 
-String getDeviceLocale(Device device) {
-  if (device.deviceType == DeviceType.android) {
-    return getAndroidDeviceLocale(device.deviceId);
-  } else {
-    return getIosSimulatorLocale(device.deviceId);
-  }
-}
-
-/// Returns locale of currently attached android device.
-String getAndroidDeviceLocale(String deviceId) {
-// ro.product.locale is available on first boot but does not update,
-// persist.sys.locale is empty on first boot but updates with locale changes
-  var locale = cmd([
-    'adb', //getAdbPath(androidSdk),
-    '-s',
-    deviceId,
-    'shell',
-    'getprop',
-    'persist.sys.locale'
-  ]).trim();
-  if (locale.isEmpty) {
-    locale = cmd([
-      'adb', //getAdbPath(androidSdk),
-      '-s',
-      deviceId,
-      'shell',
-      'getprop ro.product.locale'
-    ]).trim();
-  }
-  return locale;
-}
-
-/// Returns locale of simulator with udid [udId].
-String getIosSimulatorLocale(String udId) {
-  final env = Platform.environment;
-  final globalPreferencesPath =
-      '${env['HOME']}/Library/Developer/CoreSimulator/Devices/$udId/data/Library/Preferences/.GlobalPreferences.plist';
-
-  // create file if missing (iOS 13)
-  final globalPreferences = File(globalPreferencesPath);
-  if (!globalPreferences.existsSync()) {
-    final contents = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>AKLastIDMSEnvironment</key>
-	<integer>0</integer>
-	<key>AddingEmojiKeybordHandled</key>
-	<true/>
-	<key>AppleITunesStoreItemKinds</key>
-	<array>
-		<string>itunes-u</string>
-		<string>movie</string>
-		<string>album</string>
-		<string>ringtone</string>
-		<string>software-update</string>
-		<string>booklet</string>
-		<string>tone</string>
-		<string>music-video</string>
-		<string>tv-episode</string>
-		<string>tv-season</string>
-		<string>song</string>
-		<string>podcast</string>
-		<string>software</string>
-		<string>audiobook</string>
-		<string>podcast-episode</string>
-		<string>wemix</string>
-		<string>eBook</string>
-		<string>mix</string>
-		<string>artist</string>
-		<string>document</string>
-	</array>
-	<key>AppleKeyboards</key>
-	<array>
-		<string>en_US@sw=QWERTY;hw=Automatic</string>
-		<string>emoji@sw=Emoji</string>
-		<string>en_US@sw=QWERTY;hw=Automatic</string>
-	</array>
-	<key>AppleKeyboardsExpanded</key>
-	<integer>1</integer>
-	<key>AppleLanguages</key>
-	<array>
-		<string>en</string>
-	</array>
-	<key>AppleLanguagesDidMigrate</key>
-	<string>15C107</string>
-	<key>AppleLocale</key>
-	<string>en_US</string>
-	<key>ApplePasscodeKeyboards</key>
-	<array>
-		<string>en_US@sw=QWERTY;hw=Automatic</string>
-		<string>emoji@sw=Emoji</string>
-		<string>en_US@sw=QWERTY;hw=Automatic</string>
-	</array>
-	<key>PKKeychainVersionKey</key>
-	<integer>4</integer>
-</dict>
-</plist>
-    ''';
-    globalPreferences.writeAsStringSync(contents);
-    cmd(['plutil', '-convert', 'binary1', globalPreferences.path]);
-  }
-
-  final localeInfo = jsonDecode(
-      cmd(['plutil', '-convert', 'json', '-o', '-', globalPreferencesPath])
-  ) as Map<String, dynamic>;
-
-  final locale = localeInfo['AppleLocale'] as String;
-  return locale;
-}
-
 ///// Get android emulator id from a running emulator with id [deviceId].
 ///// Returns emulator id as [String].
 //String getAndroidEmulatorId(String deviceId) {
@@ -295,7 +183,7 @@ String getIosSimulatorLocale(String udId) {
 //}
 
 /// Wait for android device/emulator locale to change.
-Future<String> waitAndroidLocaleChange(String deviceId, String toLocale) async {
+Future<String> waitAndroidLocaleChange(Config config, String deviceId, String toLocale) async {
   final regExp = RegExp(
       'ContactsProvider: Locale has changed from .* to \\[${toLocale.replaceFirst('-', '_')}\\]|ContactsDatabaseHelper: Switching to locale \\[${toLocale.replaceFirst('-', '_')}\\]');
 //  final regExp = RegExp(
@@ -303,23 +191,23 @@ Future<String> waitAndroidLocaleChange(String deviceId, String toLocale) async {
 //  final regExp = RegExp(
 //      'ContactsProvider: Locale has changed from .* to \\[${toLocale.replaceFirst('-', '_')}\\]|ContactsDatabaseHelper: Locale change completed');
   final line =
-      await waitSysLogMsg(deviceId, regExp, toLocale.replaceFirst('-', '_'));
+      await waitSysLogMsg(config, deviceId, regExp, toLocale.replaceFirst('-', '_'));
   return line;
 }
 
 
 /// Wait for message to appear in sys log and return first matching line
 Future<String> waitSysLogMsg(
-    String deviceId, RegExp regExp, String locale) async {
+    Config config, String deviceId, RegExp regExp, String locale) async {
   cmd([
     //getAdbPath(androidSdk),
-    'adb',
+    config.adbPath,
     '-s', deviceId, 'logcat', '-c']);
 //  await Future.delayed(Duration(milliseconds: 1000)); // wait for log to clear
   await Future<void>.delayed(Duration(milliseconds: 500)); // wait for log to clear
   // -b main ContactsDatabaseHelper:I '*:S'
   final delegate = await processManager.start(<String>[
-    'adb', //getAdbPath(androidSdk),
+    config.adbPath,
     '-s',
     deviceId,
     'logcat',
@@ -352,7 +240,7 @@ String cmd(List<String> cmd) {
     throw 'command failed: exitcode=${result.exitCode}, cmd=\'${cmd.join(" ")}\'';
   }
   // return stdout
-  return result.stdout as String;
+  return (result.stdout as String).trim();
 }
 
 /// Run command and return exit code as [int].

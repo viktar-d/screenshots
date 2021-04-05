@@ -9,7 +9,7 @@ enum Orientation { Portrait, LandscapeRight, PortraitUpsideDown, LandscapeLeft }
 
 /// Change orientation of a running emulator or simulator.
 /// (No known way of supporting real devices.)
-void changeDeviceOrientation(Device device, Orientation orientation) {
+void changeDeviceOrientation(Config config, Device device, Orientation orientation) {
   final androidOrientations = {
     Orientation.Portrait: '0',
     Orientation.LandscapeRight: '1',
@@ -30,7 +30,7 @@ void changeDeviceOrientation(Device device, Orientation orientation) {
     case DeviceType.android:
       cmd([
         //getAdbPath(androidSdk),
-        'adb',
+        config.adbPath,
         '-s',
         device.deviceId,
         'shell',

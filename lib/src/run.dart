@@ -161,26 +161,21 @@ class Screenshots {
 
       if (device.emulator) {
         await daemonClient.launchEmulator(device);
-        final origLocale = utils.getDeviceLocale(device);
+        final origLocale = await device.getLocale(config);
 
         for (final locale in config.locales) {
-          await setDeviceLocale(device, locale, daemonClient);
+          await device.setLocale(config, locale);
 
           for (final orientation in device.orientations) {
-            changeDeviceOrientation(device, orientation);
+            changeDeviceOrientation(config, device, orientation);
             await runProcessTests(device, locale, orientation);
           }
         }
 
-        if (device.deviceType == DeviceType.ios) {
-          await setSimulatorLocale(device, origLocale);
-          await shutdownSimulator(device.deviceId);
-        } else {
-          await setAndroidEmulatorLocale(device, origLocale);
-          await shutdownAndroidEmulator(daemonClient, device.deviceId);
-        }
+        await device.setLocale(config, origLocale);
+        await device.shutdown(config);
       } else {
-        final locale = utils.getDeviceLocale(device);
+        final locale = await device.getLocale(config);
 
         await runProcessTests(device, locale, Orientation.Portrait);
       }
@@ -224,119 +219,6 @@ class Screenshots {
   }
 }
 
-Future<void> shutdownSimulator(String deviceId) async {
-  utils.cmd(['xcrun', 'simctl', 'shutdown', deviceId]);
-  // shutdown apparently needs time when restarting
-  // see https://github.com/flutter/flutter/issues/10228 for race condition on simulator
-  await Future<void>.delayed(Duration(milliseconds: 2000));
-}
-
-Future<void> startSimulator(DaemonClient daemonClient, String deviceId) async {
-  utils.cmd(['xcrun', 'simctl', 'boot', deviceId]);
-  await Future<void>.delayed(Duration(milliseconds: 2000));
-  await daemonClient.waitForEmulatorToStart(deviceId);
-}
-
-Future<void> setDeviceLocale(Device device, String locale, DaemonClient daemonClient) async {
-  if (device.deviceType == DeviceType.android) {
-    await setAndroidEmulatorLocale(device, locale);
-  } else {
-    final changed = await setSimulatorLocale(device, locale);
-    if (changed) {
-      print('restarting simulator due to locale change...');
-
-      await shutdownSimulator(device.deviceId);
-      await startSimulator(daemonClient, device.deviceId);
-    }
-  }
-}
-
-/// Set the simulator locale.
-/// (Startup managed elsewhere)
-/// Returns true of locale changed.
-Future<bool> setSimulatorLocale(Device device, String locale) async {
-  // a running simulator
-  final deviceLocale = utils.getIosSimulatorLocale(device.deviceId);
-  //printTrace('\'$deviceName\' locale: $deviceLocale, test locale: $testLocale');
-  if (canonicalizedLocale(locale) != canonicalizedLocale(deviceLocale)) {
-    //printStatus('Changing locale from $deviceLocale to $testLocale on \'$deviceName\'...');
-    await _changeSimulatorLocale(device.deviceId, locale);
-    return true;
-  }
-
-  return false;
-}
-
-/// Set the locale of a running emulator.
-Future<void> setAndroidEmulatorLocale(Device device, String locale) async {
-  final deviceLocale = utils.getAndroidDeviceLocale(device.deviceId);
-  //printTrace('\'$deviceName\' locale: $deviceLocale, test locale: $testLocale');
-  if (canonicalizedLocale(deviceLocale) != canonicalizedLocale(locale)) {
-    //          daemonClient.verbose = true;
-    //printStatus('Changing locale from $deviceLocale to $testLocale on \'$deviceName\'...');
-    changeAndroidLocale(device.deviceId, deviceLocale, locale);
-    //          daemonClient.verbose = false;
-    await utils.waitAndroidLocaleChange(device.deviceId, locale);
-    // allow additional time before orientation change
-//    await Future.delayed(Duration(milliseconds: 5000));
-    await Future<void>.delayed(Duration(milliseconds: 1000));
-  }
-}
-
-/// Change local of real android device or running emulator.
-void changeAndroidLocale(
-    String deviceId, String deviceLocale, String testLocale) {
-  if (utils.cmd([
-      //getAdbPath(androidSdk),
-    'adb',
-        '-s', deviceId, 'root']) ==
-      'adbd cannot run as root in production builds\n') {
-    //printError('Warning: locale will not be changed. Running in locale \'$deviceLocale\'.\n');
-    //printError('To change locale you must use a non-production emulator (one that does not depend on Play Store). See:\n');
-    //printError('    https://stackoverflow.com/questions/43923996/adb-root-is-not-working-on-emulator/45668555#45668555 for details.\n');
-  }
-  // adb shell "setprop persist.sys.locale fr_CA; setprop ctl.restart zygote"
-  utils.cmd([
-    //getAdbPath(androidSdk),
-    'adb'
-    '-s',
-    deviceId,
-    'shell',
-    'setprop',
-    'persist.sys.locale',
-    testLocale,
-    ';',
-    'setprop',
-    'ctl.restart',
-    'zygote'
-  ]);
-}
-
-/// Change locale of non-running simulator.
-Future<void> _changeSimulatorLocale(
-    String name, String testLocale) async {
-  await utils.streamCmd([
-    '$kTempDir/resources/script/simulator-controller',
-    name,
-    'locale',
-    testLocale
-  ]);
-}
-
-/// Shutdown an android emulator.
-Future<String> shutdownAndroidEmulator(
-    DaemonClient daemonClient, String deviceId) async {
-  utils.cmd([
-    //getAdbPath(androidSdk),
-    'adb',
-    '-s', deviceId, 'emu', 'kill']);
-//  await waitAndroidEmulatorShutdown(deviceId);
-  final device = await daemonClient.waitForEvent(EventType.deviceRemoved);
-  if (device['id'] != deviceId) {
-    throw 'Error: device id \'$deviceId\' not shutdown';
-  }
-  return device['id'] as String;
-}
 
 ///// Start android emulator in a CI environment.
 //Future _startAndroidEmulatorOnCI(String emulatorId, String stagingDir) async {
