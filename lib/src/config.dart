@@ -49,12 +49,10 @@ class Device {
   ) {
     final device = availableDevices.firstWhere((element) {
       if (element.deviceType != type) return false;
-      print(element.deviceId);
 
       if (element.isEmulator && element.deviceType == DeviceType.android) {
         return element
             .deviceId
-            .replaceAll('_', '-')
             .toUpperCase()
             .contains(deviceName.toUpperCase());
       } else {
