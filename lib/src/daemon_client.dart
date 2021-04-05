@@ -170,7 +170,7 @@ class DaemonClient {
     _processResponse(results[0], 'emulator.launch');
     // process the event
     final event = results[1];
-    final eventInfo = jsonDecode(event) as Map<String, dynamic>;
+    final eventInfo = jsonDecode(event) as List<dynamic>;
     if (eventInfo.length != 1 ||
         eventInfo[0]['event'] != 'device.added' ||
         eventInfo[0]['params']['emulator'] != true) {
