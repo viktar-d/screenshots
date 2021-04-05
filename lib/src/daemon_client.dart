@@ -186,7 +186,7 @@ class DaemonClient {
   Future<Map<String, dynamic>> waitForEvent(EventType eventType) async {
     _waitForEvent = Completer<String>();
 
-    final eventInfo = jsonDecode(await _waitForEvent!.future) as Map<String, dynamic>;
+    final eventInfo = jsonDecode(await _waitForEvent!.future) as List<dynamic>;
 
     switch (eventType) {
       case EventType.deviceRemoved:
