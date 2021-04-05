@@ -66,6 +66,7 @@ class DaemonClient {
         .transform<String>(LineSplitter())
         .listen((String line) async {
       //printTrace('<== $line');
+      print('<== $line');
       // todo: decode json
       if (line.contains('daemon.connected')) {
         _waitForConnection?.complete(true);
@@ -113,6 +114,7 @@ class DaemonClient {
     final results = <RunningDevice>[];
 
     final devices = await _sendCommandWaitResponse('device.getDevices');
+    print(devices.toString());
     for (var device in devices) {
       if (device['platform'] == 'ios' && device['emulator'] == false) {
         final iosDevice = _iosDevices.firstWhere((item) => item.deviceId == device['id']);
@@ -226,6 +228,7 @@ class DaemonClient {
     command['id'] = _messageId++;
 
     final commandString = '[${json.encode(command)}]';
+    print('==> $commandString');
     _process.stdin.writeln(commandString);
   }
 
