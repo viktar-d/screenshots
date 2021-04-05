@@ -100,7 +100,7 @@ class DaemonClient {
 
     for (var emulator in emulators) {
       final type = emulator['platform'] == 'ios' ? DeviceType.ios : DeviceType.android;
-      results.add(RunningDevice(emulator['name'] as String, type, true));
+      results.add(RunningDevice(emulator['id'] as String, type, true));
     }
 
     final devices = await runningDevices;
