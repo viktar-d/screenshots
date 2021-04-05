@@ -189,6 +189,7 @@ class Screenshots {
     String locale,
     Orientation orientation,
   ) async {
+    print(config.tests);
     for (final testPath in config.tests) {
       final command = ['flutter', '-d', device.deviceId, 'drive'];
 
