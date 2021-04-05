@@ -260,11 +260,11 @@ int runCmd(List<String> cmd) {
 /// and stream stdout/stderr.
 Future<void> streamCmd(
   List<String> cmd, {
-  Map<String, String> environment = const {},
+  Map<String, String>? environment,
 }) async {
   var exitCode = await runCommandAndStreamOutput(
       cmd,
-      environment: environment
+      environment: environment ?? {}
   );
   if (exitCode != 0) {
     throw 'command failed: exitcode=$exitCode, cmd=\'${cmd.join(" ")}\'';
