@@ -6,6 +6,7 @@ import 'package:args/args.dart';
 import 'package:screenshots3/screenshots.dart';
 import 'package:screenshots3/src/daemon_client.dart';
 import 'package:screenshots3/src/globals.dart';
+import 'package:screenshots3/src/run.dart';
 
 
 const usage =
@@ -116,15 +117,18 @@ void main(List<String> arguments) async {
   }
    */
 
-  final success = await screenshots(
+  final screenshots = Screenshots(
     config: config,
     runMode: RunMode.normal, //argResults[modeArg],
     flavor: argResults[flavorArg] as String,
     isBuild: argResults.wasParsed(buildArg)
         ? argResults[buildArg] == 'true' ? true : false
         : null,
-    isVerbose: argResults.wasParsed(verboseArg) ? true : false,
+    verbose: argResults.wasParsed(verboseArg) ? true : false,
   );
+
+  final success = await screenshots.run();
+
   exit(success ? 0 : 1);
 }
 

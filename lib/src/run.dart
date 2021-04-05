@@ -32,25 +32,6 @@ String canonicalizedLocale(String aLocale) {
   return '${aLocale[0]}${aLocale[1]}_$region';
 }
 
-/// Run screenshots
-Future<bool> screenshots({
-  required Config config,
-  RunMode runMode = RunMode.normal,
-  String flavor = kNoFlavor,
-  bool? isBuild,
-  bool isVerbose = false
-}) async {
-  final screenshots = Screenshots(
-    config: config,
-    runMode: runMode,
-    flavor: flavor,
-    isBuild: isBuild,
-    verbose: isVerbose
-  );
-  // run in context
-  return screenshots.run();
-}
-
 class Screenshots {
   Screenshots({
     required this.config,
@@ -137,15 +118,7 @@ class Screenshots {
     return true;
   }
 
-  void _printScreenshotDirs(String? dirPrefix) {
-    final prefix = dirPrefix == null ? '' : '${dirPrefix}/';
-    if (config.isRunTypeActive(DeviceType.ios)) {
-      //printStatus('  ${prefix}ios/fastlane/screenshots');
-    }
-    if (config.isRunTypeActive(DeviceType.android)) {
-      //printStatus('  ${prefix}android/fastlane/metadata/android');
-    }
-  }
+
 
   /// Run the screenshot integration tests on current device, emulator or simulator.
   ///
@@ -154,7 +127,7 @@ class Screenshots {
   ///
   /// Assumes the integration tests capture the screen shots into a known directory using
   /// provided [capture_screen.screenshot()].
-  Future runTestsOnAll() async {
+  Future<void> runTestsOnAll() async {
     /*
     final recordingDir = config.recordingDir;
     switch (runMode) {
@@ -187,7 +160,7 @@ class Screenshots {
 
 
       if (device.emulator) {
-        final emulatorId = await daemonClient.launchEmulator(device);
+        await daemonClient.launchEmulator(device);
         final origLocale = utils.getDeviceLocale(device);
 
         for (final locale in config.locales) {
@@ -217,7 +190,7 @@ class Screenshots {
   }
 
   /// Runs tests and processes images.
-  Future runProcessTests(
+  Future<void> runProcessTests(
     Device device,
     String locale,
     Orientation orientation,
@@ -340,7 +313,7 @@ void changeAndroidLocale(
 }
 
 /// Change locale of non-running simulator.
-Future _changeSimulatorLocale(
+Future<void> _changeSimulatorLocale(
     String name, String testLocale) async {
   await utils.streamCmd([
     '$kTempDir/resources/script/simulator-controller',

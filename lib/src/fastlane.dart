@@ -5,6 +5,13 @@ import 'package:path/path.dart' as p;
 import 'globals.dart';
 import 'dart:io';
 
+
+class Fastlane {
+  Fastlane._internal();
+
+
+}
+
 /// clear configured fastlane directories.
 Future<void> clearFastlaneDirs(
     Config config, RunMode runMode) async {

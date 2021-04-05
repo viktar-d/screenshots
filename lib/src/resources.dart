@@ -7,7 +7,7 @@ import 'globals.dart';
 import 'utils.dart';
 
 /// Read scripts from resources and install in staging area.
-Future unpackScripts() async {
+Future<void> unpackScripts() async {
   await unpackScript('resources/script/android-wait-for-emulator', kTempDir,);
   await unpackScript('resources/script/android-wait-for-emulator-to-stop', kTempDir);
   await unpackScript('resources/script/simulator-controller', kTempDir);
@@ -15,7 +15,7 @@ Future unpackScripts() async {
 }
 
 /// Read script from resources and install in staging area.
-Future unpackScript(String srcPath, String dstDir) async {
+Future<void> unpackScript(String srcPath, String dstDir) async {
   final resource = Resource('package:screenshots3/$srcPath');
   final script = await resource.readAsString();
 
