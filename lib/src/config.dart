@@ -1,10 +1,8 @@
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:resource_portable/resource.dart';
 import 'package:screenshots3/src/daemon_client.dart';
-import 'package:screenshots3/src/orientation.dart';
 import 'package:screenshots3/src/run.dart';
 import 'package:screenshots3/src/utils.dart';
 import 'package:yaml/yaml.dart';
@@ -12,6 +10,9 @@ import 'package:yaml/yaml.dart';
 import 'globals.dart';
 
 const kEnvConfigPath = 'SCREENSHOTS_YAML';
+
+const kDefaultOrientation = 'Portrait';
+enum Orientation { Portrait, LandscapeRight, PortraitUpsideDown, LandscapeLeft }
 
 class Device {
   final DeviceType deviceType;
@@ -67,6 +68,61 @@ class Device {
     if (device['id'] != emulatorId) {
       throw StateError('Device id $emulatorId was not shutdown');
     }
+  }
+
+  void rotate(Config config, Orientation orientation) {
+    if (emulatorId == null) throw StateError('Device is not running');
+
+    if (deviceType == DeviceType.android) {
+      _rotateAndroid(config, orientation);
+    } else {
+      _rotateIOS(orientation);
+    }
+  }
+
+  void _rotateAndroid(Config config, Orientation orientation) {
+    late String orientationString;
+    switch (orientation) {
+      case Orientation.Portrait:
+        orientationString = '0';
+        break;
+      case Orientation.LandscapeRight:
+        orientationString = '1';
+        break;
+      case Orientation.PortraitUpsideDown:
+        orientationString = '2';
+        break;
+      case Orientation.LandscapeLeft:
+        orientationString = '3';
+        break;
+    }
+
+    try {
+      cmd([config.adbPath, '-s', emulatorId!, 'shell', 'settings', 'put',
+        'system', 'accelerometer_rotation', '0']);
+      cmd([config.adbPath, '-s', emulatorId!, 'shell', 'settings', 'put',
+        'system', 'user_rotation', orientationString]);
+    } catch (_) {}
+  }
+
+  void _rotateIOS(Orientation orientation) {
+    late String orientationString;
+    switch (orientation) {
+      case Orientation.Portrait:
+        orientationString = 'Portrait';
+        break;
+      case Orientation.LandscapeRight:
+        orientationString = 'Landscape Right';
+        break;
+      case Orientation.PortraitUpsideDown:
+        orientationString = 'Portrait Upside Down';
+        break;
+      case Orientation.LandscapeLeft:
+        orientationString = 'Landscape Left';
+        break;
+    }
+
+    cmd(['osascript', '$kTempDir/sim_orientation.scpt', orientationString]);
   }
 
   Future<String> getLocale(Config config) async {

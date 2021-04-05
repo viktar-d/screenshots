@@ -9,7 +9,6 @@ import 'config.dart';
 import 'daemon_client.dart';
 import 'fastlane.dart' as fastlane;
 import 'globals.dart';
-import 'orientation.dart';
 import 'resources.dart' as resources;
 import 'utils.dart' as utils;
 import 'validate.dart' as validate;
@@ -167,7 +166,7 @@ class Screenshots {
           await device.setLocale(config, locale);
 
           for (final orientation in device.orientations) {
-            changeDeviceOrientation(config, device, orientation);
+            device.rotate(config, orientation);
             await runProcessTests(device, locale, orientation);
           }
         }
