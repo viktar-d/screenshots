@@ -65,5 +65,8 @@ Future<int> runCommandAndStreamOutput(
   await Future.wait([stdoutSubscription.asFuture<String>(), stderrSubscription.asFuture<String>()]);
   await Future.wait([stdoutSubscription.cancel(), stderrSubscription.cancel()]);
 
-  return await process.exitCode;
+  final exitCode = await process.exitCode;
+
+
+  return exitCode;
 }
