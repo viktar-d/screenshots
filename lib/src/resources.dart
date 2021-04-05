@@ -24,15 +24,3 @@ Future unpackScript(String srcPath, String dstDir) async {
   // make executable
   cmd(['chmod', 'u+x', '$dstDir/$srcPath']);
 }
-
-/// Read an image from resources.
-Future<List<int>> readResourceImage(String uri) async {
-  final resource = Resource('package:screenshots3/$uri');
-  return resource.readAsBytes();
-}
-
-/// Write an image to staging area.
-Future<void> writeImage(List<int> image, String path) async {
-  final file = await File(path).create(recursive: true);
-  await file.writeAsBytes(image, flush: true);
-}

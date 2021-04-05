@@ -9,10 +9,8 @@ import 'config.dart';
 import 'daemon_client.dart';
 import 'fastlane.dart' as fastlane;
 import 'globals.dart';
-import 'image_processor.dart';
 import 'orientation.dart';
 import 'resources.dart' as resources;
-import 'screens.dart';
 import 'utils.dart' as utils;
 import 'validate.dart' as validate;
 
@@ -37,7 +35,6 @@ String canonicalizedLocale(String aLocale) {
 /// Run screenshots
 Future<bool> screenshots({
   required Config config,
-  required ScreenManager screenManager,
   RunMode runMode = RunMode.normal,
   String flavor = kNoFlavor,
   bool? isBuild,
@@ -46,7 +43,6 @@ Future<bool> screenshots({
   final screenshots = Screenshots(
     config: config,
     runMode: runMode,
-    screenManager: screenManager,
     flavor: flavor,
     isBuild: isBuild,
     verbose: isVerbose
@@ -59,7 +55,6 @@ class Screenshots {
   Screenshots({
     required this.config,
     required this.runMode,
-    required this.screenManager,
     this.flavor = kNoFlavor,
     this.isBuild,
     this.verbose = false,
@@ -74,7 +69,6 @@ class Screenshots {
   final Config config;
 
   final RunMode runMode;
-  final ScreenManager screenManager;
 
   late Archive archive;
 
@@ -97,7 +91,7 @@ class Screenshots {
     //       so have to be handled separately
 
     // validate config file
-    if (!await validate.isValidConfig(config, screenManager)) {
+    if (!await validate.isValidConfig(config)) {
       return false;
     }
 
@@ -108,7 +102,7 @@ class Screenshots {
     if (runMode == RunMode.archive) {
       //printStatus('Archiving screenshots to ${archive.archiveDirPrefix}...');
     } else {
-      await fastlane.clearFastlaneDirs(config, screenManager, runMode);
+      await fastlane.clearFastlaneDirs(config, runMode);
     }
 
     // run integration tests in each real device (or emulator/simulator) for
@@ -251,8 +245,8 @@ class Screenshots {
       }
       await utils.streamCmd(command);
       // process screenshots
-      final imageProcessor = ImageProcessor(screenManager);
-      await imageProcessor.process(device, locale, runMode, orientation, archive);
+      //final imageProcessor = ImageProcessor(screenManager);
+      //await imageProcessor.process(device, locale, runMode, orientation, archive);
     }
   }
 }

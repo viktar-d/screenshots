@@ -1,21 +1,18 @@
-import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:screenshots3/src/daemon_client.dart';
 import 'package:screenshots3/src/orientation.dart';
-import 'package:screenshots3/src/utils.dart';
 import 'package:yaml/yaml.dart';
 
 import 'globals.dart';
-import 'screens.dart';
-import 'utils.dart' as utils;
 
 const kEnvConfigPath = 'SCREENSHOTS_YAML';
 
 class Device {
   final DeviceType deviceType;
   final String name;
+  final String destName;
+  final String phoneType;
   final bool frame;
   final List<Orientation> orientations;
   final bool build;
@@ -25,22 +22,14 @@ class Device {
   Device({
     required this.deviceType,
     required this.name,
+    required this.destName,
+    required this.phoneType,
     required this.deviceId,
     required this.emulator,
     this.frame = true,
     this.orientations = const [Orientation.Portrait],
     this.build = true,
-  }) {
-    for (var orientation in orientations) {
-      if (orientation == Orientation.LandscapeLeft ||
-          orientation == Orientation.LandscapeRight) {
-        if (frame == true) {
-          throw ArgumentError(
-              'Cannot set frame=true if orientation is landscape');
-        }
-      }
-    }
-  }
+  });
 
   String getDestPath(String locale, String androidModelType) {
     locale = locale.replaceAll('_', '-');
@@ -103,6 +92,8 @@ class Device {
     return Device(
       deviceType: type,
       name: deviceName,
+      phoneType: yaml['deviceFrame'] as String,
+      destName: yaml['deviceType'] as String? ?? 'phone',
       frame: yaml['frame'] as bool? ?? defaultFrame,
       orientations: orientations,
       build: yaml['build'] as bool? ?? true,

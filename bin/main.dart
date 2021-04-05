@@ -6,7 +6,6 @@ import 'package:args/args.dart';
 import 'package:screenshots3/screenshots.dart';
 import 'package:screenshots3/src/daemon_client.dart';
 import 'package:screenshots3/src/globals.dart';
-import 'package:screenshots3/src/screens.dart';
 
 
 const usage =
@@ -67,21 +66,6 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  // check imagemagick is installed
-  if (!await isImageMagicInstalled()) {
-    stderr.writeln(
-        '#############################################################');
-    stderr.writeln("# You have to install ImageMagick to use Screenshots");
-    if (Platform.isMacOS) {
-      stderr.writeln(
-          "# Install it using 'brew update && brew install imagemagick'");
-      stderr.writeln("# If you don't have homebrew: goto http://brew.sh");
-    }
-    stderr.writeln(
-        '#############################################################');
-    exit(1);
-  }
-
   // validate args
   if (!await File(argResults[configArg] as String).exists()) {
     _handleError(argParser, 'File not found: ${argResults[configArg]}');
@@ -132,11 +116,8 @@ void main(List<String> arguments) async {
   }
    */
 
-  final manager = await ScreenManager.fromResource();
-
   final success = await screenshots(
     config: config,
-    screenManager: manager,
     runMode: RunMode.normal, //argResults[modeArg],
     flavor: argResults[flavorArg] as String,
     isBuild: argResults.wasParsed(buildArg)

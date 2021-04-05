@@ -1,22 +1,19 @@
 import 'dart:async';
 
-import 'package:screenshots3/src/image_magick.dart';
-
 import 'config.dart';
-import 'screens.dart';
 import 'package:path/path.dart' as p;
 import 'globals.dart';
 import 'dart:io';
 
 /// clear configured fastlane directories.
-Future clearFastlaneDirs(
-    Config config, ScreenManager screens, RunMode runMode) async {
+Future<void> clearFastlaneDirs(
+    Config config, RunMode runMode) async {
 
   if (config.isRunTypeActive(DeviceType.android)) {
     for (var device in config.androidDevices) {
       for (final locale in config.locales) {
         await _clearFastlaneDir(
-            screens, device.name, locale, DeviceType.android, runMode);
+            device.destName, device.name, locale, DeviceType.android, runMode);
       }
     }
   }
@@ -24,29 +21,23 @@ Future clearFastlaneDirs(
     for (var device in config.iosDevices) {
       for (final locale in config.locales) {
         await _clearFastlaneDir(
-            screens, device.name, locale, DeviceType.ios, runMode);
+            device.destName, device.name, locale, DeviceType.ios, runMode);
       }
     }
   }
 }
 
 /// Clear images destination.
-Future _clearFastlaneDir(ScreenManager screens, String deviceName, String locale,
+Future<void> _clearFastlaneDir(String destName, String deviceName, String locale,
     DeviceType deviceType, RunMode runMode) async {
-  final screen = screens.getScreen(deviceName);
 
-  final dirPath = getDirPath(deviceType, locale, screen?.destName ?? 'phone');
+  final dirPath = getDirPath(deviceType, locale, destName);
 
   //printStatus('Clearing images in $dirPath for \'$deviceName\'...');
   // delete images ending with .kImageExtension
   // for compatibility with FrameIt
   // (see https://github.com/mmcc007/screenshots/issues/61)
   deleteMatchingFiles(dirPath, RegExp('$deviceName.*.$kImageExtension'));
-  if (runMode == RunMode.normal) {
-    // delete all diff files (if any)
-    deleteMatchingFiles(
-        dirPath, RegExp('.*${ImageMagick.kDiffSuffix}.$kImageExtension'));
-  }
 }
 
 const kFastlanePhone = 'phone';

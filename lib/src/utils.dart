@@ -338,7 +338,6 @@ Future<String> waitSysLogMsg(
     .firstWhere((line) => regExp.hasMatch(line));
 }
 
-
 /// Run command and return stdout as [string].
 String cmd(List<String> cmd) {
   final result = processManager.runSync(
