@@ -89,7 +89,6 @@ String cmd(List<String> cmd, {String? workingDirectory}) {
   );
   if (result.exitCode != 0) {
     print('cmd error: ${result.stderr}');
-    throw 'command failed: exitcode=${result.exitCode}, cmd=\'${cmd.join(" ")}\'';
   }
 
   return (result.stdout as String).trim();
