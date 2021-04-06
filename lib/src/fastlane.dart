@@ -1,5 +1,6 @@
 
 import 'package:path/path.dart';
+import 'package:screenshots3/src/utils.dart';
 
 import 'config.dart';
 import 'globals.dart';
@@ -21,5 +22,21 @@ class Fastlane {
     for (final file in files) {
       file.renameSync('${directory.path}/${basename(file.path)}');
     }
+  }
+
+  static void frameScreenshots(Device device, List<String> locales) {
+    for (final locale in locales) {
+      _frameLocaleScreenshots(device, locale);
+    }
+  }
+
+  static void _frameLocaleScreenshots(Device device, String locale) {
+    final directory = device.getDestDirectory(locale);
+
+    // bundle exec fastlane run frameit force_device_type:"Samsung Galaxy S10"
+    cmd(
+      ['bundle', 'exec', 'fastlane', 'run', 'frameit', 'force_device_type:"${device.phoneType}"'],
+      workingDirectory: directory.path
+    );
   }
 }

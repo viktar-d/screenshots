@@ -80,10 +80,11 @@ String getHighestIosVersion(Map<String, dynamic> iOSVersions) {
 }
 
 /// Run command and return stdout as [string].
-String cmd(List<String> cmd) {
+String cmd(List<String> cmd, {String? workingDirectory}) {
   final result = DaemonClient.processManager.runSync(
     cmd,
     runInShell: true,
+    workingDirectory: workingDirectory ?? '.',
     stdoutEncoding: utf8
   );
   if (result.exitCode != 0) {

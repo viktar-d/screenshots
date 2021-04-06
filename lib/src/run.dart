@@ -109,6 +109,8 @@ class Screenshots {
           Fastlane.copyScreenshots(device, locale);
         }
 
+        Fastlane.frameScreenshots(device, config.locales);
+
         await device.setLocale(config, origLocale);
         await device.shutdown(config);
       } else {
@@ -116,6 +118,7 @@ class Screenshots {
 
         await runProcessTests(device, locale, Orientation.Portrait);
         Fastlane.copyScreenshots(device, locale);
+        Fastlane.frameScreenshots(device, <String>[locale]);
       }
     }
 
