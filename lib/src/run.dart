@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
+import 'package:screenshots3/src/utils.dart';
 
 
 import 'archive.dart';
@@ -10,7 +11,6 @@ import 'daemon_client.dart';
 import 'fastlane.dart' as fastlane;
 import 'globals.dart';
 import 'resources.dart' as resources;
-import 'utils.dart' as utils;
 import 'validate.dart' as validate;
 
 
@@ -190,7 +190,6 @@ class Screenshots {
     String locale,
     Orientation orientation,
   ) async {
-    print(config.tests);
     for (final testPath in config.tests) {
       final command = ['flutter', '-d', device.emulatorId!, 'drive'];
 
@@ -216,7 +215,7 @@ class Screenshots {
         //    'Warning: flavor parameter \'$flavor\' is ignored because no build is set for this device');
       }
       print('starting: ${command.join(' ')}');
-      await utils.streamCmd(command);
+      runCmd(command);
       // process screenshots
       //final imageProcessor = ImageProcessor(screenManager);
       //await imageProcessor.process(device, locale, runMode, orientation, archive);

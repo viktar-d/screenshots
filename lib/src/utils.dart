@@ -252,6 +252,7 @@ int runCmd(List<String> cmd) {
   if (result.exitCode != 0) {
     //printTrace(result.stdout);
     //printTrace(result.stderr);
+    print('runCmd error: ${result.stderr}');
   }
   return result.exitCode;
 }
