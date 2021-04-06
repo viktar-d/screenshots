@@ -39,14 +39,17 @@ class Device {
     this.build = true,
   });
 
-  String getDestPath(String locale, String androidModelType) {
+  Directory getDestDirectory(String locale) {
     locale = locale.replaceAll('_', '-');
 
+    late final String path;
     if (deviceType == DeviceType.android) {
-      return 'android/fastlane/metadata/android/$locale/images/${androidModelType}Screenshots';
+      path = 'android/fastlane/metadata/android/$locale/images/${deviceType}Screenshots';
     } else {
-      return 'ios/fastlane/screenshots/$locale';
+      path = 'ios/fastlane/screenshots/$locale';
     }
+
+    return Directory(path);
   }
 
   Future<void> shutdown(Config config) async {
@@ -188,18 +191,14 @@ class Device {
 
       cmd([config.adbPath, '-s', emulatorId!, 'shell', 'setprop',
         'persist.sys.locale', locale, ';', 'setprop', 'ctl.restart', 'zygote']);
-
-      print('locale set');
     }
-
-    print('aa');
   }
 
   Future<bool> _setSimulatorLocale(Config config, String locale) async {
     final deviceLocale = await _getIOSLocale(config);
 
     if (canonicalizedLocale(deviceLocale) != canonicalizedLocale(locale)) {
-      await streamCmd([
+      cmd([
         '$kTempDir/resources/script/simulator-controller',
         emulatorId!, 'locale', locale
       ]);

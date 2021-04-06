@@ -2,13 +2,12 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
+import 'package:screenshots3/src/fastlane.dart';
 import 'package:screenshots3/src/utils.dart';
 
 
-import 'archive.dart';
 import 'config.dart';
 import 'daemon_client.dart';
-import 'fastlane.dart' as fastlane;
 import 'globals.dart';
 import 'resources.dart' as resources;
 import 'validate.dart' as validate;
@@ -38,10 +37,7 @@ class Screenshots {
     this.flavor = kNoFlavor,
     this.isBuild,
     this.verbose = false,
-  }) {
-    //archive = Archive(config.archiveDir!);
-    archive = Archive('');
-  }
+  });
 
   final String flavor;
   final bool? isBuild; // defaults to null
@@ -50,7 +46,6 @@ class Screenshots {
 
   final RunMode runMode;
 
-  late Archive archive;
 
   /// Capture screenshots, process, and load into fastlane according to config file.
   ///
@@ -65,11 +60,6 @@ class Screenshots {
     // start flutter daemon
     print('Starting flutter daemon...');
 
-    // get all attached devices and running emulators/simulators
-    // get all available unstarted android emulators
-    // note: unstarted simulators are not properly included in this list
-    //       so have to be handled separately
-
     // validate config file
     if (!await validate.isValidConfig(config)) {
       return false;
@@ -79,41 +69,11 @@ class Screenshots {
     await Directory(path.join(kTempDir, kTestScreenshotsDir)).create(recursive: true);
 
     if (!Platform.isWindows) await resources.unpackScripts();
-    if (runMode == RunMode.archive) {
-      //printStatus('Archiving screenshots to ${archive.archiveDirPrefix}...');
-    } else {
-      await fastlane.clearFastlaneDirs(config, runMode);
-    }
 
     // run integration tests in each real device (or emulator/simulator) for
     // each locale and process screenshots
     await runTestsOnAll();
 
-
-    //printStatus('\n\nScreen images are available in:');
-    if (runMode == RunMode.recording) {
-      //_printScreenshotDirs(config.recordingDir);
-    } else {
-      if (runMode == RunMode.archive) {
-        //printStatus('  ${archive.archiveDirPrefix}');
-      } else {
-        //_printScreenshotDirs(null);
-        final isIosActive = config.isRunTypeActive(DeviceType.ios);
-        final isAndroidActive = config.isRunTypeActive(DeviceType.android);
-        if (isIosActive && isAndroidActive) {
-          //printStatus('for upload to both Apple and Google consoles.');
-        }
-        if (isIosActive && !isAndroidActive) {
-          //printStatus('for upload to Apple console.');
-        }
-        if (!isIosActive && isAndroidActive) {
-          //printStatus('for upload to Google console.');
-        }
-        //printStatus('\nFor uploading and other automation options see:');
-        //printStatus('  https://pub.dartlang.org/packages/fledge');
-      }
-    }
-   // printStatus('\nscreenshots completed successfully.');
     return true;
   }
 
@@ -127,31 +87,6 @@ class Screenshots {
   /// Assumes the integration tests capture the screen shots into a known directory using
   /// provided [capture_screen.screenshot()].
   Future<void> runTestsOnAll() async {
-    /*
-    final recordingDir = config.recordingDir;
-    switch (runMode) {
-      case RunMode.normal:
-        break;
-      case RunMode.recording:
-        recordingDir == null
-            ? throw 'Error: \'recording\' dir is not specified in your screenshots.yaml'
-            : null;
-        break;
-      case RunMode.comparison:
-        runMode == RunMode.comparison &&
-                (recordingDir == null || !(await utils.isRecorded(recordingDir)))
-            ? throw 'Error: a recording must be run before a comparison'
-            : null;
-        break;
-      case RunMode.archive:
-        config.archiveDir == null
-            ? throw 'Error: \'archive\' dir is not specified in your screenshots.yaml'
-            : null;
-        break;
-    }
-
-     */
-
     final daemonClient = await DaemonClient.getInstance();
 
     for (final device in config.devices) {
@@ -170,6 +105,8 @@ class Screenshots {
             print('runningProcessTests');
             await runProcessTests(device, locale, orientation);
           }
+
+          Fastlane.copyScreenshots(device, locale);
         }
 
         await device.setLocale(config, origLocale);
@@ -178,6 +115,7 @@ class Screenshots {
         final locale = await device.getLocale(config);
 
         await runProcessTests(device, locale, Orientation.Portrait);
+        Fastlane.copyScreenshots(device, locale);
       }
     }
 
@@ -215,31 +153,10 @@ class Screenshots {
         //    'Warning: flavor parameter \'$flavor\' is ignored because no build is set for this device');
       }
       print('starting: ${command.join(' ')}');
-      runCmd(command);
+      cmd(command);
       // process screenshots
       //final imageProcessor = ImageProcessor(screenManager);
       //await imageProcessor.process(device, locale, runMode, orientation, archive);
     }
   }
 }
-
-
-///// Start android emulator in a CI environment.
-//Future _startAndroidEmulatorOnCI(String emulatorId, String stagingDir) async {
-//  // testing on CI/CD requires starting emulator in a specific way
-//  final androidHome = platform.environment['ANDROID_HOME'];
-//  await utils.streamCmd([
-//    '$androidHome/emulator/emulator',
-//    '-avd',
-//    emulatorId,
-//    '-no-audio',
-//    '-no-window',
-//    '-no-snapshot',
-//    '-gpu',
-//    'swiftshader',
-//  ], mode: ProcessStartMode.detached);
-//  // wait for emulator to start
-//  await utils
-//      .streamCmd(['$stagingDir/resources/script/android-wait-for-emulator']);
-//}
-

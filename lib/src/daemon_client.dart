@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:process/process.dart';
 import 'package:screenshots3/screenshots.dart';
 import 'package:screenshots3/src/globals.dart';
 import 'package:screenshots3/src/utils.dart';
-import 'package:screenshots3/src/utils/process.dart';
 
 enum EventType { deviceRemoved }
 
@@ -21,6 +21,7 @@ class RunningDevice {
 /// Starts and communicates with flutter daemon.
 class DaemonClient {
   late Process _process;
+  static final ProcessManager processManager = LocalProcessManager();
 
   static final DaemonClient _client = DaemonClient._internal();
 

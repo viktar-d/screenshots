@@ -1,39 +1,5 @@
-import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:path/path.dart';
-import 'package:screenshots3/src/config.dart';
-import 'package:screenshots3/src/utils/process.dart';
-
-import 'globals.dart';
-
-class Tuple<A, B> {
-  final A first;
-  final B second;
-
-  const Tuple(this.first, this.second);
-}
-
-class Tuple3<A, B, C> {
-  final A first;
-  final B second;
-  final C third;
-
-  Tuple3(this.first, this.second, this.third);
-}
-
-/// Move files from [srcDir] to [dstDir].
-/// If dstDir does not exist, it is created.
-void moveFiles(String srcDir, String dstDir) {
-  if (!Directory(dstDir).existsSync()) {
-    Directory(dstDir).createSync(recursive: true);
-  }
-  Directory(srcDir).listSync().forEach((file) {
-    file.renameSync('$dstDir/${basename(file.path)}');
-  });
-}
-
+import 'package:screenshots3/src/daemon_client.dart';
 
 /// Creates a list of available iOS simulators.
 /// (really just concerned with simulators for now).
@@ -113,161 +79,17 @@ String getHighestIosVersion(Map<String, dynamic> iOSVersions) {
   return iOSVersionName;
 }
 
-///// Create list of avds,
-//List<String> getAvdNames() {
-//  return cmd([getEmulatorPath(androidSdk), '-list-avds']).split('\n');
-//}
-
-///// Get the highest available avd version for the android emulator.
-//String getHighestAVD(String deviceName) {
-//  final emulatorName = deviceName.replaceAll(' ', '_');
-//  final avds =
-//      getAvdNames().where((name) => name.contains(emulatorName)).toList();
-//  // sort list in android API order
-//  avds.sort((v1, v2) {
-//    return v1.compareTo(v2);
-//  });
-//
-//  return avds.last;
-//}
-
-/// Adds prefix to all files in a directory
-Future prefixFilesInDir(String dirPath, String prefix) async {
-    await for (final file in Directory(dirPath).list(recursive: false, followLinks: false)) {
-      final path = file.path;
-      await file.rename('${dirname(path)}/$prefix${basename(path)}');
-    }
-}
-
-/// Converts [_enum] value to [String].
-String getStringFromEnum(dynamic _enum) => _enum.toString().split('.').last;
-
-///// Get android emulator id from a running emulator with id [deviceId].
-///// Returns emulator id as [String].
-//String getAndroidEmulatorId(String deviceId) {
-//  // get name of avd of running emulator
-//  return cmd([getAdbPath(androidSdk), '-s', deviceId, 'emu', 'avd', 'name'])
-//      .split('\r\n')
-//      .map((line) => line.trim())
-//      .first;
-//}
-//
-///// Find android device id with matching [emulatorId].
-///// Returns matching android device id as [String].
-//String findAndroidDeviceId(String emulatorId) {
-//  /// Get the list of running android devices by id.
-//  List<String> getAndroidDeviceIds() {
-//    return cmd([getAdbPath(androidSdk), 'devices'])
-//        .trim()
-//        .split('\n')
-//        .sublist(1) // remove first line
-//        .map((device) => device.split('\t').first)
-//        .toList();
-//  }
-//
-//  final devicesIds = getAndroidDeviceIds();
-//  if (devicesIds.isEmpty) return null;
-//  return devicesIds.firstWhere(
-//      (deviceId) => emulatorId == getAndroidEmulatorId(deviceId),
-//      orElse: () => null);
-//}
-
-///// Stop an android emulator.
-//Future stopAndroidEmulator(String deviceId, String stagingDir) async {
-//  cmd([getAdbPath(), '-s', deviceId, 'emu', 'kill']);
-//  // wait for emulator to stop
-//  await streamCmd([
-//    '$stagingDir/resources/script/android-wait-for-emulator-to-stop',
-//    deviceId
-//  ]);
-//}
-
-/// Wait for android device/emulator locale to change.
-Future<String> waitAndroidLocaleChange(Config config, String deviceId, String toLocale) async {
-  final regExp = RegExp(
-      'ContactsProvider: Locale has changed from .* to \\[${toLocale.replaceFirst('-', '_')}\\]|ContactsDatabaseHelper: Switching to locale \\[${toLocale.replaceFirst('-', '_')}\\]');
-//  final regExp = RegExp(
-//      'ContactsProvider: Locale has changed from .* to \\[${toLocale.replaceFirst('-', '_')}\\]');
-//  final regExp = RegExp(
-//      'ContactsProvider: Locale has changed from .* to \\[${toLocale.replaceFirst('-', '_')}\\]|ContactsDatabaseHelper: Locale change completed');
-  final line =
-      await waitSysLogMsg(config, deviceId, regExp, toLocale.replaceFirst('-', '_'));
-  return line;
-}
-
-
-/// Wait for message to appear in sys log and return first matching line
-Future<String> waitSysLogMsg(
-    Config config, String deviceId, RegExp regExp, String locale) async {
-  cmd([
-    //getAdbPath(androidSdk),
-    config.adbPath,
-    '-s', deviceId, 'logcat', '-c']);
-//  await Future.delayed(Duration(milliseconds: 1000)); // wait for log to clear
-  await Future<void>.delayed(Duration(milliseconds: 500)); // wait for log to clear
-  // -b main ContactsDatabaseHelper:I '*:S'
-  final delegate = await processManager.start(<String>[
-    config.adbPath,
-    '-s',
-    deviceId,
-    'logcat',
-    '-b',
-    'main',
-    '*:S',
-    'ContactsDatabaseHelper:I',
-    'ContactsProvider:I',
-    '-e',
-    locale
-  ]);
-
-  return await delegate.stdout
-    .transform(Utf8Decoder(allowMalformed: true))
-    .transform(const LineSplitter())
-    .firstWhere((line) => regExp.hasMatch(line));
-}
-
 /// Run command and return stdout as [string].
 String cmd(List<String> cmd) {
-  final result = processManager.runSync(
+  final result = DaemonClient.processManager.runSync(
     cmd,
     runInShell: true,
     stdoutEncoding: utf8
   );
-  //if (!silent) printStatus(result.stdout);
   if (result.exitCode != 0) {
-    //if (silent) printError(result.stdout);
-    //printError(result.stderr);
     print('cmd error: ${result.stderr}');
     throw 'command failed: exitcode=${result.exitCode}, cmd=\'${cmd.join(" ")}\'';
   }
-  // return stdout
+
   return (result.stdout as String).trim();
-}
-
-/// Run command and return exit code as [int].
-///
-/// Allows failed exit code.
-int runCmd(List<String> cmd) {
-  final result = processManager.runSync(cmd);
-  if (result.exitCode != 0) {
-    //printTrace(result.stdout);
-    //printTrace(result.stderr);
-    print('runCmd error: ${result.stderr}');
-  }
-  return result.exitCode;
-}
-
-/// Execute command with arguments [cmd] in a separate process
-/// and stream stdout/stderr.
-Future<void> streamCmd(
-  List<String> cmd, {
-  Map<String, String>? environment,
-}) async {
-  var exitCode = await runCommandAndStreamOutput(
-      cmd,
-      environment: environment ?? {}
-  );
-  if (exitCode != 0) {
-    throw 'command failed: exitcode=$exitCode, cmd=\'${cmd.join(" ")}\'';
-  }
 }

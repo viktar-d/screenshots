@@ -72,50 +72,10 @@ void main(List<String> arguments) async {
     _handleError(argParser, 'File not found: ${argResults[configArg]}');
   }
 
-  // Check flutter command is found
-  // https://github.com/mmcc007/screenshots/issues/135
-  if (getExecutablePath('flutter', '.') == null) {
-    stderr.writeln(
-        '#############################################################');
-    stderr.writeln("# 'flutter' must be in the PATH to use Screenshots");
-    stderr.writeln("# You can usually add it to the PATH using"
-        "# export PATH='\$HOME/Library/flutter/bin:\$PATH'");
-    stderr.writeln(
-        '#############################################################');
-    exit(1);
-  }
-
-
   final daemonClient = await DaemonClient.getInstance();
   final devices = await daemonClient.devicesInfo;
 
   final config = Config.loadFromFile(argResults[configArg] as String, devices);
-
-  /*
-  if (config.isRunTypeActive(DeviceType.android)) {
-    // check required executables for android
-    if (!await isAdbPath()) {
-      stderr.writeln(
-          '#############################################################');
-      stderr.writeln("# 'adb' must be in the PATH to use Screenshots");
-      stderr.writeln("# You can usually add it to the PATH using"
-          "# export PATH='\$HOME/Library/Android/sdk/platform-tools:\$PATH'");
-      stderr.writeln(
-          '#############################################################');
-      exit(1);
-    }
-    if (!await isEmulatorPath()) {
-      stderr.writeln(
-          '#############################################################');
-      stderr.writeln("# 'emulator' must be in the PATH to use Screenshots");
-      stderr.writeln("# You can usually add it to the PATH using"
-          "# export PATH='\$HOME/Library/Android/sdk/emulator:\$PATH'");
-      stderr.writeln(
-          '#############################################################');
-      exit(1);
-    }
-  }
-   */
 
   final screenshots = Screenshots(
     config: config,
