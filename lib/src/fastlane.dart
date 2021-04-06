@@ -24,17 +24,17 @@ class Fastlane {
     }
   }
 
-  static void frameScreenshots(Device device, List<String> locales) {
+  static Future<void> frameScreenshots(Device device, List<String> locales) async {
     for (final locale in locales) {
-      _frameLocaleScreenshots(device, locale);
+      await _frameLocaleScreenshots(device, locale);
     }
   }
 
-  static void _frameLocaleScreenshots(Device device, String locale) {
+  static Future<void> _frameLocaleScreenshots(Device device, String locale) async {
     final directory = device.getDestDirectory(locale);
 
     // bundle exec fastlane run frameit force_device_type:"Samsung Galaxy S10"
-    cmd(
+    await cmd(
       ['bundle', 'exec', 'fastlane', 'run', 'frameit',
         'force_device_type:${device.phoneType}', 'path:.'],
       workingDirectory: directory.path

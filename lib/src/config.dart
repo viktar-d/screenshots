@@ -58,12 +58,12 @@ class Device {
     if (deviceType == DeviceType.android) {
       await _shutdownEmulator(config);
     } else {
-      _shutdownSimulator();
+      await _shutdownSimulator();
     }
   }
 
   Future<void> _shutdownEmulator(Config config) async {
-    cmd([config.adbPath, '-s', emulatorId!, 'emu', 'kill']);
+    await cmd([config.adbPath, '-s', emulatorId!, 'emu', 'kill']);
 
     final client = await DaemonClient.getInstance();
     final device = await client.waitForEvent(EventType.deviceRemoved);
@@ -73,17 +73,17 @@ class Device {
     }
   }
 
-  void rotate(Config config, Orientation orientation) {
+  Future<void> rotate(Config config, Orientation orientation) async {
     if (emulatorId == null) throw StateError('Device is not running');
 
     if (deviceType == DeviceType.android) {
-      _rotateAndroid(config, orientation);
+      await _rotateAndroid(config, orientation);
     } else {
-      _rotateIOS(orientation);
+      await _rotateIOS(orientation);
     }
   }
 
-  void _rotateAndroid(Config config, Orientation orientation) {
+  Future<void> _rotateAndroid(Config config, Orientation orientation) async {
     late String orientationString;
     switch (orientation) {
       case Orientation.Portrait:
@@ -101,14 +101,14 @@ class Device {
     }
 
     try {
-      cmd([config.adbPath, '-s', emulatorId!, 'shell', 'settings', 'put',
+      await cmd([config.adbPath, '-s', emulatorId!, 'shell', 'settings', 'put',
         'system', 'accelerometer_rotation', '0']);
-      cmd([config.adbPath, '-s', emulatorId!, 'shell', 'settings', 'put',
+      await cmd([config.adbPath, '-s', emulatorId!, 'shell', 'settings', 'put',
         'system', 'user_rotation', orientationString]);
     } catch (_) {}
   }
 
-  void _rotateIOS(Orientation orientation) {
+  Future<void> _rotateIOS(Orientation orientation) async {
     late String orientationString;
     switch (orientation) {
       case Orientation.Portrait:
@@ -125,7 +125,7 @@ class Device {
         break;
     }
 
-    cmd(['osascript', '$kTempDir/sim_orientation.scpt', orientationString]);
+    await cmd(['osascript', '$kTempDir/sim_orientation.scpt', orientationString]);
   }
 
   Future<String> getLocale(Config config) async {
@@ -138,11 +138,11 @@ class Device {
     }
   }
 
-  String _getAndroidLocale(Config config) {
-    var locale = cmd([config.adbPath, '-s', emulatorId!, 'shell', 'getprop', 'persist.sys.locale']);
+  Future<String> _getAndroidLocale(Config config) async {
+    var locale = await cmd([config.adbPath, '-s', emulatorId!, 'shell', 'getprop', 'persist.sys.locale']);
 
     if (locale.isEmpty) {
-      locale = cmd([config.adbPath, '-s', emulatorId!, 'shell', 'getprop ro.product.locale']);
+      locale = await cmd([config.adbPath, '-s', emulatorId!, 'shell', 'getprop ro.product.locale']);
     }
 
     return locale;
@@ -156,11 +156,11 @@ class Device {
     if (!globalPreferences.existsSync()) {
       final resource = Resource('package:screenshots3/resources/defaultGlobalPreferences.plist');
       globalPreferences.writeAsStringSync(await resource.readAsString());
-      cmd(['plutil', '-convert', 'binary1', globalPreferences.path]);
+      await cmd(['plutil', '-convert', 'binary1', globalPreferences.path]);
     }
 
     final localeInfo = jsonDecode(
-      cmd(['plutil', '-convert', 'json', '-o', '-', globalPreferencesPath])
+      await cmd(['plutil', '-convert', 'json', '-o', '-', globalPreferencesPath])
     ) as Map<String, dynamic>;
 
     return localeInfo['AppLocale'] as String;
@@ -168,28 +168,28 @@ class Device {
 
   Future<void> setLocale(Config config, String locale) async {
     if (deviceType == DeviceType.android) {
-      _setAndroidEmulatorLocale(config, locale);
+      await _setAndroidEmulatorLocale(config, locale);
     } else {
       final changed = await _setSimulatorLocale(config, locale);
       if (changed) {
         print('restarting simulator due to locale change...');
 
-        _shutdownSimulator();
+        await _shutdownSimulator();
         await _startSimulator();
       }
     }
   }
 
-  void _setAndroidEmulatorLocale(Config config, String locale) {
-    final deviceLocale = _getAndroidLocale(config);
+  Future<void> _setAndroidEmulatorLocale(Config config, String locale) async {
+    final deviceLocale = await _getAndroidLocale(config);
 
     if (canonicalizedLocale(deviceLocale) != canonicalizedLocale(locale)) {
-      if (cmd([config.adbPath, '-s', emulatorId!, 'root'])
+      if (await cmd([config.adbPath, '-s', emulatorId!, 'root'])
           == 'adbd cannot run as root in production builds\n') {
         throw StateError('Cannot change locale of production emulator');
       }
 
-      cmd([config.adbPath, '-s', emulatorId!, 'shell', 'setprop',
+      await cmd([config.adbPath, '-s', emulatorId!, 'shell', 'setprop',
         'persist.sys.locale', locale, ';', 'setprop', 'ctl.restart', 'zygote']);
     }
   }
@@ -198,7 +198,7 @@ class Device {
     final deviceLocale = await _getIOSLocale(config);
 
     if (canonicalizedLocale(deviceLocale) != canonicalizedLocale(locale)) {
-      cmd([
+      await cmd([
         '$kTempDir/resources/script/simulator-controller',
         emulatorId!, 'locale', locale
       ]);
@@ -209,12 +209,12 @@ class Device {
     return false;
   }
 
-  void _shutdownSimulator() {
-    cmd(['xcrun', 'simctl', 'shutdown', emulatorId!]);
+  Future<void> _shutdownSimulator() async {
+    await cmd(['xcrun', 'simctl', 'shutdown', emulatorId!]);
   }
 
   Future<void> _startSimulator() async {
-    cmd(['xcrun', 'simctl', 'boot', emulatorId!]);
+    await cmd(['xcrun', 'simctl', 'boot', emulatorId!]);
 
     final client = await DaemonClient.getInstance();
     await client.waitForEmulatorToStart(emulatorId!);

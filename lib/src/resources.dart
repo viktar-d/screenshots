@@ -22,5 +22,5 @@ Future<void> unpackScript(String srcPath, String dstDir) async {
   final file = await File('$dstDir/$srcPath').create(recursive: true);
   await file.writeAsString(script, flush: true);
   // make executable
-  cmd(['chmod', 'u+x', '$dstDir/$srcPath']);
+  await cmd(['chmod', 'u+x', '$dstDir/$srcPath']);
 }

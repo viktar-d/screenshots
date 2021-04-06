@@ -4,8 +4,8 @@ import 'package:screenshots3/src/daemon_client.dart';
 /// Creates a list of available iOS simulators.
 /// (really just concerned with simulators for now).
 /// Provides access to their IDs and status'.
-Map<String, dynamic> getIosSimulators() {
-  final simulators = cmd(['xcrun', 'simctl', 'list', 'devices', '--json']);
+Future<Map<String, dynamic>> getIosSimulators() async {
+  final simulators = await cmd(['xcrun', 'simctl', 'list', 'devices', '--json']);
   final simulatorsInfo = jsonDecode(simulators)['devices'] as Map<String, dynamic>;
   return transformIosSimulators(simulatorsInfo);
 }
@@ -80,17 +80,24 @@ String getHighestIosVersion(Map<String, dynamic> iOSVersions) {
 }
 
 /// Run command and return stdout as [string].
-String cmd(List<String> cmd, {String? workingDirectory}) {
+Future<String> cmd(List<String> cmd, {String? workingDirectory, int retries = 3}) async {
   print('calling cmd: ${cmd.join(' ')}');
-  final result = DaemonClient.processManager.runSync(
-    cmd,
-    runInShell: true,
-    workingDirectory: workingDirectory ?? '.',
-    stdoutEncoding: utf8
-  );
-  if (result.exitCode != 0) {
-    print('cmd error: ${result.stderr}');
+
+  while (retries > 0) {
+    final result = DaemonClient.processManager.runSync(
+      cmd,
+      runInShell: true,
+      workingDirectory: workingDirectory ?? '.',
+      stdoutEncoding: utf8
+    );
+    if (result.exitCode != 0) {
+      print('cmd error: ${result.stderr}');
+      await Future<void>.delayed(Duration(seconds: 2));
+      retries--;
+    } else {
+      return (result.stdout as String).trim();
+    }
   }
 
-  return (result.stdout as String).trim();
+  return '';
 }

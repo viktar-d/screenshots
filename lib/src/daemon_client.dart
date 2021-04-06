@@ -57,7 +57,7 @@ class DaemonClient {
 
       await _sendCommandWaitResponse('device.enable');
       // maybe should check if iOS run type is active
-      if (Platform.isMacOS) _iosDevices = getIosDevices();
+      if (Platform.isMacOS) _iosDevices = await getIosDevices();
     }
   }
 
@@ -150,10 +150,10 @@ class DaemonClient {
   }
 
   Future<String> _launchIosSimulator(Device device) async {
-    final simulator = getHighestIosSimulator(getIosSimulators(), device.deviceId);
+    final simulator = getHighestIosSimulator(await getIosSimulators(), device.deviceId);
     final deviceId = simulator['udid'] as String;
 
-    cmd(['xcrun', 'simctl', 'boot', deviceId]);
+    await cmd(['xcrun', 'simctl', 'boot', deviceId]);
     await Future<void>.delayed(Duration(seconds: 2));
     await waitForEmulatorToStart(deviceId);
 
@@ -257,12 +257,11 @@ class DaemonClient {
 }
 
 /// Get attached ios devices with id and model.
-List<RunningDevice> getIosDevices() {
+Future<List<RunningDevice>> getIosDevices() async {
   final regExp = RegExp(r'Found (\w+) \(\w+, (.*), \w+, \w+\)');
   final noAttachedDevices = 'no attached devices';
   final iosDeployDevices =
-      cmd(['sh', '-c', 'ios-deploy -c || echo "$noAttachedDevices"'])
-          .trim()
+      (await cmd(['sh', '-c', 'ios-deploy -c || echo "$noAttachedDevices"']))
           .split('\n')
           .sublist(1);
   if (iosDeployDevices.isEmpty || iosDeployDevices[0] == noAttachedDevices) {

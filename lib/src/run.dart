@@ -92,7 +92,6 @@ class Screenshots {
     for (final device in config.devices) {
       if (!Platform.isMacOS && device.deviceType == DeviceType.ios) continue;
 
-
       if (device.emulator) {
         await daemonClient.launchEmulator(device);
         final origLocale = await device.getLocale(config);
@@ -101,7 +100,7 @@ class Screenshots {
           await device.setLocale(config, locale);
 
           for (final orientation in device.orientations) {
-            device.rotate(config, orientation);
+            await device.rotate(config, orientation);
             print('runningProcessTests');
             await runProcessTests(device, locale, orientation);
           }
@@ -109,7 +108,7 @@ class Screenshots {
           Fastlane.copyScreenshots(device, locale);
         }
 
-        Fastlane.frameScreenshots(device, config.locales);
+        await Fastlane.frameScreenshots(device, config.locales);
 
         await device.setLocale(config, origLocale);
         await device.shutdown(config);
@@ -118,7 +117,7 @@ class Screenshots {
 
         await runProcessTests(device, locale, Orientation.Portrait);
         Fastlane.copyScreenshots(device, locale);
-        Fastlane.frameScreenshots(device, <String>[locale]);
+        await Fastlane.frameScreenshots(device, <String>[locale]);
       }
     }
 
@@ -156,7 +155,7 @@ class Screenshots {
         //    'Warning: flavor parameter \'$flavor\' is ignored because no build is set for this device');
       }
       print('starting: ${command.join(' ')}');
-      cmd(command);
+      await cmd(command);
       // process screenshots
       //final imageProcessor = ImageProcessor(screenManager);
       //await imageProcessor.process(device, locale, runMode, orientation, archive);
