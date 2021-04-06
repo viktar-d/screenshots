@@ -35,7 +35,7 @@ class Fastlane {
 
     // bundle exec fastlane run frameit force_device_type:"Samsung Galaxy S10"
     cmd(
-      ['bundle', 'exec', 'fastlane', 'run', 'frameit', 'force_device_type:"${device.phoneType}"'],
+      ['bundle', 'exec', 'fastlane', 'run', 'frameit', 'force_device_type:${device.phoneType}'],
       workingDirectory: directory.path
     );
   }
