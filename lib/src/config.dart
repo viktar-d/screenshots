@@ -44,7 +44,7 @@ class Device {
 
     late final String path;
     if (deviceType == DeviceType.android) {
-      path = 'android/fastlane/metadata/android/$locale/images/${deviceType}Screenshots';
+      path = 'android/fastlane/metadata/android/$locale/images/${phoneType}Screenshots';
     } else {
       path = 'ios/fastlane/screenshots/$locale';
     }
