@@ -1,7 +1,13 @@
+// @dart=2.8
+
 import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:screenshots/screenshots.dart';
+import 'package:screenshots/src/daemon_client.dart';
+import 'package:screenshots/src/globals.dart';
+import 'package:screenshots/src/run.dart';
+
 
 const usage =
     'usage: screenshots [-h] [-c <config file>] [-m <normal|recording|comparison|archive>] [-f <flavor>] [-b <true|false>] [-v]';
@@ -16,7 +22,7 @@ void main(List<String> arguments) async {
   final buildArg = 'build';
   final helpArg = 'help';
   final verboseArg = 'verbose';
-  final ArgParser argParser = ArgParser(allowTrailingOptions: false)
+  final argParser = ArgParser(allowTrailingOptions: false)
     ..addOption(configArg,
         abbr: 'c',
         defaultsTo: kConfigFileName,
@@ -50,7 +56,7 @@ void main(List<String> arguments) async {
   }
 
   // show help
-  if (argResults[helpArg]) {
+  if (argResults[helpArg] as bool) {
     _showUsage(argParser);
     exit(0);
   }
@@ -61,73 +67,28 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  // check imagemagick is installed
-  if (!await isImageMagicInstalled()) {
-    stderr.writeln(
-        '#############################################################');
-    stderr.writeln("# You have to install ImageMagick to use Screenshots");
-    if (Platform.isMacOS) {
-      stderr.writeln(
-          "# Install it using 'brew update && brew install imagemagick'");
-      stderr.writeln("# If you don't have homebrew: goto http://brew.sh");
-    }
-    stderr.writeln(
-        '#############################################################');
-    exit(1);
-  }
-
   // validate args
-  if (!await File(argResults[configArg]).exists()) {
-    _handleError(argParser, "File not found: ${argResults[configArg]}");
+  if (!await File(argResults[configArg] as String).exists()) {
+    _handleError(argParser, 'File not found: ${argResults[configArg]}');
   }
 
-  // Check flutter command is found
-  // https://github.com/mmcc007/screenshots/issues/135
-  if (getExecutablePath('flutter', '.') == null) {
-    stderr.writeln(
-        '#############################################################');
-    stderr.writeln("# 'flutter' must be in the PATH to use Screenshots");
-    stderr.writeln("# You can usually add it to the PATH using"
-        "# export PATH='\$HOME/Library/flutter/bin:\$PATH'");
-    stderr.writeln(
-        '#############################################################');
-    exit(1);
-  }
+  final daemonClient = await DaemonClient.getInstance();
+  final devices = await daemonClient.devicesInfo;
 
-  final config = Config(configPath: argResults[configArg]);
-  if (config.isRunTypeActive(DeviceType.android)) {
-    // check required executables for android
-    if (!await isAdbPath()) {
-      stderr.writeln(
-          '#############################################################');
-      stderr.writeln("# 'adb' must be in the PATH to use Screenshots");
-      stderr.writeln("# You can usually add it to the PATH using"
-          "# export PATH='\$HOME/Library/Android/sdk/platform-tools:\$PATH'");
-      stderr.writeln(
-          '#############################################################');
-      exit(1);
-    }
-    if (!await isEmulatorPath()) {
-      stderr.writeln(
-          '#############################################################');
-      stderr.writeln("# 'emulator' must be in the PATH to use Screenshots");
-      stderr.writeln("# You can usually add it to the PATH using"
-          "# export PATH='\$HOME/Library/Android/sdk/emulator:\$PATH'");
-      stderr.writeln(
-          '#############################################################');
-      exit(1);
-    }
-  }
+  final config = Config.loadFromFile(argResults[configArg] as String, devices);
 
-  final success = await screenshots(
-    configPath: argResults[configArg],
-    mode: argResults[modeArg],
-    flavor: argResults[flavorArg],
+  final screenshots = Screenshots(
+    config: config,
+    runMode: RunMode.normal, //argResults[modeArg],
+    flavor: argResults[flavorArg] as String,
     isBuild: argResults.wasParsed(buildArg)
         ? argResults[buildArg] == 'true' ? true : false
         : null,
-    isVerbose: argResults.wasParsed(verboseArg) ? true : false,
+    verbose: argResults.wasParsed(verboseArg) ? true : false,
   );
+
+  final success = await screenshots.run();
+
   exit(success ? 0 : 1);
 }
 

@@ -1,3 +1,6 @@
+
+import 'dart:io';
+
 /// default config file name
 const String kConfigFileName = 'screenshots.yaml';
 
@@ -18,3 +21,5 @@ enum RunMode { normal, recording, comparison, archive }
 
 /// No flavor
 const String kNoFlavor = 'no flavor';
+
+final String kTempDir = Directory.systemTemp.path;

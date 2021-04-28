@@ -1,100 +1,43 @@
-import 'dart:async';
 
-import 'package:screenshots/src/image_magick.dart';
-import 'package:tool_base/tool_base.dart' hide Config;
+import 'package:path/path.dart';
+import 'package:screenshots/src/utils.dart';
 
 import 'config.dart';
-import 'screens.dart';
-import 'package:path/path.dart' as p;
 import 'globals.dart';
+import 'dart:io';
 
-/// clear configured fastlane directories.
-Future clearFastlaneDirs(
-    Config config, Screens screens, RunMode runMode) async {
-  if (config.isRunTypeActive(DeviceType.android)) {
-    for (ConfigDevice device in config.androidDevices) {
-      for (final locale in config.locales) {
-        await _clearFastlaneDir(
-            screens, device.name, locale, DeviceType.android, runMode);
-      }
+
+class Fastlane {
+  Fastlane._internal();
+
+  static void copyScreenshots(Device device, String locale) {
+    final files = Directory('$kTempDir/$kTestScreenshotsDir')
+        .listSync(recursive: false, followLinks: false)
+        .whereType<File>();
+    final directory = device.getDestDirectory(locale);
+
+    directory.deleteSync(recursive: true);
+    directory.createSync(recursive: true);
+
+    for (final file in files) {
+      file.renameSync('${directory.path}/${basename(file.path)}');
     }
   }
-  if (config.isRunTypeActive(DeviceType.ios)) {
-    for (ConfigDevice device in config.iosDevices) {
-      for (final locale in config.locales) {
-        await _clearFastlaneDir(
-            screens, device.name, locale, DeviceType.ios, runMode);
-      }
+
+  static Future<void> frameScreenshots(Device device, List<String> locales) async {
+    for (final locale in locales) {
+      await _frameLocaleScreenshots(device, locale);
     }
   }
-}
 
-/// Clear images destination.
-Future _clearFastlaneDir(Screens screens, String deviceName, String locale,
-    DeviceType deviceType, RunMode runMode) async {
-  final Map screenProps = screens.getScreen(deviceName);
-  String androidModelType = getAndroidModelType(screenProps, deviceName);
+  static Future<void> _frameLocaleScreenshots(Device device, String locale) async {
+    final directory = device.getDestDirectory(locale);
 
-  final dirPath = getDirPath(deviceType, locale, androidModelType);
-
-  printStatus('Clearing images in $dirPath for \'$deviceName\'...');
-  // delete images ending with .kImageExtension
-  // for compatibility with FrameIt
-  // (see https://github.com/mmcc007/screenshots/issues/61)
-  deleteMatchingFiles(dirPath, RegExp('$deviceName.*.$kImageExtension'));
-  if (runMode == RunMode.normal) {
-    // delete all diff files (if any)
-    deleteMatchingFiles(
-        dirPath, RegExp('.*${ImageMagick.kDiffSuffix}.$kImageExtension'));
-  }
-}
-
-const kFastlanePhone = 'phone';
-const kFastlaneSevenInch = 'sevenInch';
-const kFastlaneTenInch = 'tenInch';
-// ios/fastlane/screenshots/en-US/*[iPad|iPhone]*
-// android/fastlane/metadata/android/en-US/images/phoneScreenshots
-// android/fastlane/metadata/android/en-US/images/tenInchScreenshots
-// android/fastlane/metadata/android/en-US/images/sevenInchScreenshots
-/// Generate fastlane dir path for ios or android.
-String getDirPath(
-    DeviceType deviceType, String locale, String androidModelType) {
-  locale = locale.replaceAll('_', '-'); // in case canonicalized
-  const androidPrefix = 'android/fastlane/metadata/android';
-  const iosPrefix = 'ios/fastlane/screenshots';
-  String dirPath;
-  switch (deviceType) {
-    case DeviceType.android:
-      dirPath = '$androidPrefix/$locale/images/${androidModelType}Screenshots';
-      break;
-    case DeviceType.ios:
-      dirPath = '$iosPrefix/$locale';
-  }
-  return dirPath;
-}
-
-/// Get android model type (phone or tablet screen size).
-String getAndroidModelType(Map screenProps, String deviceName) {
-  String androidDeviceType = kFastlanePhone;
-  if (screenProps == null) {
-    printStatus(
-        'Warning: using default value \'$kFastlanePhone\' in \'$deviceName\' fastlane directory.');
-  } else {
-    androidDeviceType = screenProps['destName'];
-  }
-  return androidDeviceType;
-}
-
-/// Clears files matching a pattern in a directory.
-/// Creates directory if none exists.
-void deleteMatchingFiles(String dirPath, RegExp pattern) {
-  if (fs.directory(dirPath).existsSync()) {
-    fs.directory(dirPath).listSync().toList().forEach((e) {
-      if (pattern.hasMatch(p.basename(e.path))) {
-        fs.file(e.path).deleteSync();
-      }
-    });
-  } else {
-    fs.directory(dirPath).createSync(recursive: true);
+    // bundle exec fastlane run frameit force_device_type:"Samsung Galaxy S10"
+    await cmd(
+      ['bundle', 'exec', 'fastlane', 'run', 'frameit',
+        'force_device_type:${device.phoneType}', 'path:.'],
+      workingDirectory: directory.path
+    );
   }
 }
