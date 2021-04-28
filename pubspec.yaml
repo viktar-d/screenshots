@@ -11,15 +11,10 @@ dependencies:
   args: ^2.0.0
   yaml: ^3.1.0
   resource_portable: ^3.0.0
-  path: ^1.6.2
   process: ^4.0.0
 
 dev_dependencies:
   pedantic: any
-  quiver: ^3.0.0
-  flutter_driver:
-    version: any
-    sdk: flutter
 
 executables:
   screenshots: main
